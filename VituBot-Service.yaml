@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: vitubot
+  name: vitubot
+spec:
+  ports:
+    - name: "http"
+      port: 80
+  selector:
+    io.kompose.service: vitubot
