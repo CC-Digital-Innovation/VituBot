@@ -1,2 +1,6 @@
+fastapi
 meraki
+loguru
+pydantic
+python-dotenv
 requests
