@@ -28,6 +28,10 @@ VALID_ARGUMENT_COUNT = 3
 
 # =================================== Enums ===================================
 class ClientStatus(Enum):
+    """
+    Represents the pretty string of the status of a client in Meraki.
+    """
+    
     ONLINE = ':large_green_circle: Online'
     OFFLINE = ':red_circle: Offline'
     UNKNOWN = ':grey_question: Unknown'
@@ -36,6 +40,17 @@ class ClientStatus(Enum):
 # ================================== Classes ==================================
 @dataclass
 class MerakiClient:
+    """
+    Represents a client connected to Meraki.
+    
+    Args:
+        mac_address (str): The MAC address of the client.
+        name (str): The name of the client as seen in Meraki.
+        status (ClientStatus): The status of the client.
+        site_mac_address (str): The MAC address of the device that the client
+            is connected to.
+    """
+    
     mac_address: str
     name: str
     status: ClientStatus
@@ -43,7 +58,21 @@ class MerakiClient:
 
 
 # ================================= Functions =================================
-def validate(arguments: list[str]) -> bool:
+def is_valid_argument(arguments: list[str]) -> bool:
+    """
+    Validates the arguments to this command. This should be a list of each
+    discrete string that the user used to tag and engage with the bot with
+    the intentions of running a command.
+
+    Args:
+        arguments (list[str]): A list of arguments for this command. This will
+            typically look like: ["@vitubot", "wifi", "{Clover MAC address}"]
+
+    Returns:
+        bool: True if the arguments are non-null, have the proper number of
+            arguments, and a valid Clover MAC address. False otherwise.
+    """
+    
     # Check if the arguments are None.
     if arguments is None:
         error_message = 'Invalid arguments provided'
@@ -75,13 +104,25 @@ def validate(arguments: list[str]) -> bool:
 
 
 def get_meraki_client(mac_address: str) -> MerakiClient:
+    """
+    Retrieves the client with the provided MAC address from Meraki.
+
+    Args:
+        mac_address (str): The MAC address of the client.
+
+    Returns:
+        MerakiClient: The associated client with name, status, and the MAC 
+            address of the site probe the client is connected to. 
+    """
+    
     # Try to find the client with the given MAC address in Meraki.
     meraki_client_response = MERAKI_DASHBOARD.networks.getNetworkClient(
         networkId=MERAKI_NETWORK_ID,
         clientId=mac_address
     )
 
-    # Extract the client's MAC address, name, and status.
+    # Extract the client's MAC address, name, status, and the MAC address of
+    # the device the client is connected to.
     client_mac_address = meraki_client_response['mac']
     client_name = client_mac_address if meraki_client_response['description'] is None else meraki_client_response['description']
     client_raw_status = meraki_client_response['status']
@@ -105,22 +146,24 @@ def get_meraki_client(mac_address: str) -> MerakiClient:
 
 
 def get_meraki_client_site(client: MerakiClient) -> str:
+    """
+    Retrieves the device that the provided client is connected to in Meraki.
+
+    Args:
+        client (MerakiClient): The client associated with the device we are
+            trying to find in Meraki.
+
+    Returns:
+        str: The name of the device associated with the client (the name of
+            the site).
+    """
+    
     site_name = ''
     
     # Get all network devices in Meraki.
-    try:
-        meraki_devices_response = MERAKI_DASHBOARD.networks.getNetworkDevices(
-            networkId=MERAKI_NETWORK_ID
-        )
-    # Something went wrong. Send an error message to Slack.
-    except MerakiAPIError:
-        slack_message = f':yellow_circle: | Device with MAC address ' \
-                        f'{client.mac_address} is ' \
-                        f'{client.status.value} in ' \
-                        f'Meraki, but I could not find the site the device ' \
-                        f'is connected to'
-        print(slack_message)
-        return site_name
+    meraki_devices_response = MERAKI_DASHBOARD.networks.getNetworkDevices(
+        networkId=MERAKI_NETWORK_ID
+    )
 
     # Find the device that the client is connected to and extract its name (the site's name).
     for meraki_device in meraki_devices_response:
@@ -133,6 +176,18 @@ def get_meraki_client_site(client: MerakiClient) -> str:
 
 
 def format_output(meraki_client: MerakiClient, site_name: str) -> dict[list]:
+    """
+    Formats the output of the Slack message. Makes the output look
+    sophisticated and pretty to convey the overall status effectively.
+
+    Args:
+        meraki_client (MerakiClient): The client to output the status for.
+        site_name (str): The name of the site the client is connected to.
+
+    Returns:
+        dict[list]: The JSON-formatted dictionary object for the Slack API.
+    """
+    
     slack_message_json = {"blocks": []}
     
     # Add the header to the message.
@@ -177,17 +232,17 @@ def format_output(meraki_client: MerakiClient, site_name: str) -> dict[list]:
 
 def execute(arguments: list[str]) -> None:
     """
-    Given a MAC address, find the status of the associated client on the
-    configured Meraki network. Then send the status of that client to the
-    configured Slack channel. The status includes the Meraki device the client
-    is connected to.
+    Executes the status command. It will output the status of a client in
+    Meraki, which will typically be a Clover device. The output includes the
+    client's status and the site it is connected to.
 
     Args:
-        mac_address (str): The MAC address of the client device.
+        arguments (list[str]): The arguments to the command. This will
+            typically look like: ["@vitubot", "wifi", "{Clover MAC address}"]
     """
 
     # Validate the arguments.
-    if not validate(arguments):
+    if not is_valid_argument(arguments):
         return
     
     # Extract the MAC address from the arguments.
@@ -201,12 +256,15 @@ def execute(arguments: list[str]) -> None:
         return
 
     # Get the site's name that the client is connected to.
-    site_name = get_meraki_client_site(meraki_client)
+    try:
+        site_name = get_meraki_client_site(meraki_client)
+    except MerakiAPIError as error:
+        logger.error(f'An error occurred trying to get the site name from Meraki: {error}')
+        logger.warning(f'Sending the client''s status without the site name')
+        site_name = ''
     
     # Format the payload for Slack.
     slack_payload = format_output(meraki_client, site_name)
-
-    print(json.dumps(slack_payload, indent=2))
 
     # Return the Meraki client's status to Slack.
     slack.send_message(slack_payload)
