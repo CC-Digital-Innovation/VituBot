@@ -292,6 +292,7 @@ class NetworkDevicesGroup:
                     self.clover_com = ping_sensor
                 else:
                     logger.warning(f"An unusual network device's ping sensor was detected at site {self.name}")
+                    logger.warning(f'Name: {device_name_lower} | Object: {ping_sensor}')
                     continue
                 
                 # Check the status of this network device.
@@ -841,12 +842,12 @@ def is_valid_argument(arguments: list[str]) -> bool:
     
     # Check if there are an incorrect number of arguments.
     if len(arguments) > VALID_ARGUMENT_COUNT:
-        error_message = 'Too many arguments'
+        error_message = f'Too many arguments - expecting {VALID_ARGUMENT_COUNT} but got {len(arguments)}'
         logger.error(error_message)
         slack.send_error(error_message)
         return False
     elif len(arguments) < VALID_ARGUMENT_COUNT:
-        error_message = 'Too few arguments'
+        error_message = F'Too few arguments - expecting {VALID_ARGUMENT_COUNT}, but got {len(arguments)}'
         logger.error(error_message)
         slack.send_error(error_message)
         return False
@@ -854,7 +855,7 @@ def is_valid_argument(arguments: list[str]) -> bool:
     # Verify the format of the site's ID.
     site_id = arguments[2].strip()
     if not SITE_ID_REGEX.match(site_id):
-        error_message = 'Invalid site ID - Must be a 3-digit ID'
+        error_message = 'Invalid site ID - Must be a valid 3-digit ID'
         logger.error(error_message)
         slack.send_error(error_message)
         return False

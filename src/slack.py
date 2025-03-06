@@ -3,6 +3,7 @@ import json
 import os
 
 from dotenv import load_dotenv
+from loguru import logger
 from pydantic import BaseModel
 import requests
 
@@ -12,7 +13,6 @@ load_dotenv(override=True)
 
 # Initialize Slack constant global variables.
 SLACK_OAUTH_TOKEN = os.getenv('SLACK_OAUTH_TOKEN')
-SLACK_APP_TOKEN = os.getenv('SLACK_APP_TOKEN')
 SLACK_POST_CHANNEL = os.getenv('SLACK_POST_CHANNEL')
 SLACK_BASE_API_URL = 'https://slack.com/api'
 SLACK_ACK_PAYLOAD = {
@@ -121,22 +121,6 @@ class EventCallback(BaseModel):
     
 
 # ================================= Functions =================================
-def is_valid_event_callback_token(token: str) -> bool:
-    """
-    Compares the provided token to the Slack app's token.
-
-    Args:
-        token (str): The token to compare.
-
-    Returns:
-        bool: True if the provided token matches this Slack app's
-            token. Otherwise, returns false.
-    """
-    
-    # Return whether the provided token is valid or not.
-    return True if token == SLACK_APP_TOKEN else False
-
-
 def send_message(json_payload: dict) -> None:
     """
     Send the provided JSON-formatted dictionary to the configured Slack
@@ -160,6 +144,12 @@ def send_message(json_payload: dict) -> None:
         },
         data=f'{json.dumps(json_payload)}'
     )
+    
+    # Log if the message was sent successfully or not.
+    if send_message_response.ok:
+        logger.info('Slack message successfully sent!')
+    else:
+        logger.error('Slack message failed to send')
 
 
 def send_error(reason: str) -> None:

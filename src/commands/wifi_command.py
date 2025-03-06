@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-import json
 import os
 import re
 
@@ -75,19 +74,19 @@ def is_valid_argument(arguments: list[str]) -> bool:
     
     # Check if the arguments are None.
     if arguments is None:
-        error_message = 'Invalid arguments provided'
+        error_message = 'Invalid arguments provided - please try again'
         logger.error(error_message)
         slack.send_error(error_message)
         return False
     
     # Check if there are an incorrect number of arguments.
     if len(arguments) > VALID_ARGUMENT_COUNT:
-        error_message = 'Too many arguments'
+        error_message = f'Too many arguments - expecting {VALID_ARGUMENT_COUNT} but got {len(arguments)}'
         logger.error(error_message)
         slack.send_error(error_message)
         return False
     elif len(arguments) < VALID_ARGUMENT_COUNT:
-        error_message = 'Too few arguments'
+        error_message = f'Too few arguments - expecting {VALID_ARGUMENT_COUNT}, but got {len(arguments)}'
         logger.error(error_message)
         slack.send_error(error_message)
         return False
@@ -252,7 +251,10 @@ def execute(arguments: list[str]) -> None:
     try:
         meraki_client = get_meraki_client(client_mac_address)
     except MerakiAPIError as error:
-        print(f'An API error occurred while getting client with MAC address {client_mac_address}')
+        error_message = f'An API error occurred while getting client with MAC address {client_mac_address}'
+        logger.error(error_message)
+        logger.error(f'API error: {error}')
+        slack.send_error(error_message)
         return
 
     # Get the site's name that the client is connected to.
