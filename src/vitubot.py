@@ -113,7 +113,6 @@ def vitubot(payload: dict):
     
     # Validate the payload received.
     if not is_valid_payload(payload):
-        slack.send_error('Invalid payload received')
         logger.info(VITUBOT_END_STRING)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
