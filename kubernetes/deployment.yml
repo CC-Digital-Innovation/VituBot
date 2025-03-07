@@ -53,3 +53,9 @@ spec:
               memory: 128Mi
       serviceAccountName: vitubot
   timeZone: US/Eastern
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - image: harbor.k3s.quokka.ninja/library/vitubot:0.0.1
