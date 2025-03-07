@@ -13,7 +13,7 @@ load_dotenv(override=True)
 
 # Initialize Slack constant global variables.
 SLACK_OAUTH_TOKEN = os.getenv('SLACK_OAUTH_TOKEN')
-SLACK_POST_CHANNEL = os.getenv('SLACK_POST_CHANNEL')
+SLACK_POST_CHANNEL_ID = os.getenv('SLACK_POST_CHANNEL_ID')
 SLACK_BASE_API_URL = 'https://slack.com/api'
 SLACK_ACK_PAYLOAD = {
     "blocks": [
@@ -133,7 +133,7 @@ def send_message(json_payload: dict) -> None:
     """
     
     # Add the channel into the payload.
-    json_payload['channel'] = SLACK_POST_CHANNEL
+    json_payload['channel'] = SLACK_POST_CHANNEL_ID
     
     # Send the payload to Slack.
     send_message_response = requests.post(

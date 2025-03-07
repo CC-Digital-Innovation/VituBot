@@ -1,0 +1,7 @@
+repo: https://github.com/CC-Digital-Innovation/VituBot
+ssh_url: git@github.com:CC-Digital-Innovation/VituBot.git
+branch: main
+project_root: src
+image: vitubot
+manifest_path: kubernetes/deployment.yml
+pipeline: vitubot
