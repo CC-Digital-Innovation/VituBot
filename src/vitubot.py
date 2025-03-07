@@ -16,8 +16,9 @@ from loguru import logger
 load_dotenv(override=True)
 
 # Initialize the app's constant global variables.
+app = FastAPI()
+
 VITUBOT_SLACK_APP_TOKEN = os.getenv('SLACK_APP_TOKEN')
-VITUBOT_APP = FastAPI()
 VITUBOT_SUCCESSFUL_RESPONSE = {
     'status_code': 200,
     'details': 'Command successful'
@@ -90,7 +91,7 @@ def is_valid_payload(payload: dict) -> bool:
         
 
 # ================================= Endpoints =================================
-@VITUBOT_APP.post('/vitubot/slack/event')
+@app.post('/vitubot/slack/event')
 def vitubot(payload: dict):
     """
     Executes a VituBot command based off the provided payload. The payload will 
