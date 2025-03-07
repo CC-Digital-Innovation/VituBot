@@ -25,8 +25,8 @@ access to this information without needing a PRTG / Meraki account.
 - Edit the example environment file with relevant Meraki, PRTG, and Slack 
   configuration information.
 
-- Simply run the FastAPI script using Python:
-  `fastapi run vitubot.py`
+- Simply run the main.py script using Python:
+  `python ./src/main.py`
 
 - Commands for the bot and how to use them can be found in this
   [Tettra page](https://app.tettra.co/teams/quokka-one/pages/vitubot).
