@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vitubot
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vitubot
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: 'true'
+        vault.hashicorp.com/role: 'vitubot'
+        vault.hashicorp.com/agent-inject-secret-v-meraki: 'secret/v/meraki'
+        vault.hashicorp.com/agent-inject-template-v-meraki: |
+          {{- with secret "secret/v/meraki" -}}
+            export MERAKI_API_KEY="{{ .Data.data.api_key }}"
+            export MERAKI_NETWORK_ID="{{ .Data.data.network_id }}"
+            export MERAKI_ORGANIZATION_ID="{{ .Data.data.organization_id }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-v-prtg: 'secret/v/prtg'
+        vault.hashicorp.com/agent-inject-template-v-prtg: |
+          {{- with secret "secret/v/prtg" -}}
+            export PRTG_INSTANCE_NAME="{{ .Data.data.instance_name }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-vitubot: 'secret/vitubot'
+        vault.hashicorp.com/agent-inject-template-vitubot: |
+          {{- with secret "secret/vitubot" -}}
+            export PRTG_API_KEY="{{ .Data.data.prtg_api_key }}"
+            export SLACK_OAUTH_TOKEN="{{ .Data.data.slack_oauth_token }}"
+            export SLACK_APP_TOKEN="{{ .Data.data.slack_app_token }}"
+            export SLACK_POST_CHANNEL_ID="{{ .Data.data.slack_post_channel_id }}"
+          {{- end }}
+        vault.hashicorp.com/agent-pre-populate-only: 'true'
+        vault.hashicorp.com/ca-cert: /run/secrets/kubernetes.io/serviceaccount/ca.crt
+      labels:
+        app: vitubot
+    spec:
+      containers:
+        - image: harbor.k3s.quokka.ninja/library/vitubot
+          name: vitubot
+          args: ['/bin/bash', '-c', 'source /vault/secrets/v-meraki && source /vault/secrets/v-prtg && source /vault/secrets/vitubot && uvicorn vitubot:app --host 0.0.0.0 --port 8000 --root-path /api']
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1024Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+      serviceAccountName: vitubot
+  timeZone: US/Eastern
