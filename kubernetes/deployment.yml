@@ -39,7 +39,7 @@ spec:
         app: vitubot
     spec:
       containers:
-        - image: harbor.k3s.quokka.ninja/library/vitubot
+        - image: harbor.k3s.quokka.ninja/library/vitubot:0.0.6
           name: vitubot
           args: ['/bin/bash', '-c', 'source /vault/secrets/v-meraki && source /vault/secrets/v-prtg && source /vault/secrets/vitubot && uvicorn vitubot:app --host 0.0.0.0 --port 8000 --root-path /vitubot']
           ports:
