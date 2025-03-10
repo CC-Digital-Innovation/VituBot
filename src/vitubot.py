@@ -91,7 +91,7 @@ def is_valid_payload(payload: dict) -> bool:
         
 
 # ================================= Endpoints =================================
-@app.post('/vitubot/slack/event')
+@app.post('/slack/event')
 def vitubot(payload: dict):
     """
     Executes a VituBot command based off the provided payload. The payload will 
