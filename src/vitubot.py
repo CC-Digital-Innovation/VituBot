@@ -139,7 +139,7 @@ def vitubot(payload: dict):
         }
     
     # Check for unknown / unsupported Slack event type.
-    if payload['type'] != slack.EventType.APP_MENTION.value:
+    if payload['type'] != slack.EventType.EVENT_CALLBACK.value:
         logger.error('An unsupported Slack event type was received')
         logger.info(VITUBOT_END_STRING)
         raise HTTPException(

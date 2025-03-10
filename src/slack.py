@@ -37,6 +37,7 @@ class EventType(Enum):
     
     URL_VERIFICATION = 'url_verification'
     APP_MENTION = 'app_mention'
+    EVENT_CALLBACK = 'event_callback'
 
 
 # ================================== Classes ==================================
@@ -63,22 +64,29 @@ class Event(BaseModel):
     Represents a Slack event.
 
     Args:
-        type (str): The type of Slack event.
-        event_ts (str): The Unix timestamp when this event occurred in
-            microseconds.
         user (str): The user ID that triggered the event.
+        type (str): The type of Slack event.
         ts (str): The Unix timestamp when this event occurred in seconds with
             a floating point decimal that includes microseconds.
+        client_msg_id (str): The ID of the message from Slack.
         text (str): The text that the user typed to trigger the event.
+        team (str): The team ID.
+        blocks (list[dict]): A list of blocks that describe what the message
+            looked like in Slack.
         channel (str): The channel ID where the event occurred.
+        event_ts (str): The Unix timestamp when this event occurred in
+            microseconds.
     """
     
-    type: str
-    event_ts: str
     user: str
+    type: str
     ts: str
+    client_msg_id: str
     text: str
+    team: str
+    blocks: list[dict]
     channel: str
+    event_ts: str
 
 
 class EventCallback(BaseModel):
@@ -87,14 +95,13 @@ class EventCallback(BaseModel):
     event occurs for this bot.
 
     Args:
-        type (str): The type of callback. Typically this is "event_callback".
         token (str): The token used to validate this event callback. If this is
             invalid, discard this callback.
         team_id (str): The ID of the workspace / team where this event callback
             came from.
         api_app_id (str): The app ID associated with this event callback.
         event (Event): The Slack event.
-        event_context (str): An identifier for this specific event instance.
+        type (str): The type of callback. Typically this is "event_callback".
         event_id (str): The ID of this event instance that is unique across
             Slack globally.
         event_time (int): The Unix timestamp in seconds when this event
@@ -102,22 +109,19 @@ class EventCallback(BaseModel):
         authorizations (list[dict] | None): An installation of this app.
         is_ext_shared_channel (bool): True if the event occurred in an external
             channel, false otherwise.
-        context_team_id (str): An ID of some sort.
-        context_enterprise_id (str | None): Another ID of some sort.
+        event_context (str): An identifier for this specific event instance.
     """
     
-    type: str
     token: str
     team_id: str
     api_app_id: str
     event: Event
-    event_context: str
+    type: str
     event_id: str
     event_time: int
     authorizations: list[dict] | None
     is_ext_shared_channel: bool
-    context_team_id: str
-    context_enterprise_id: str | None
+    event_context: str
     
 
 # ================================= Functions =================================
