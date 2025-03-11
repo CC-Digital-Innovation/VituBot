@@ -102,7 +102,7 @@ def is_valid_argument(arguments: list[str]) -> bool:
     return True
 
 
-def get_meraki_client(mac_address: str) -> MerakiClient:
+async def get_meraki_client(mac_address: str) -> MerakiClient:
     """
     Retrieves the client with the provided MAC address from Meraki.
 
@@ -144,7 +144,7 @@ def get_meraki_client(mac_address: str) -> MerakiClient:
     )
 
 
-def get_meraki_client_site(client: MerakiClient) -> str:
+async def get_meraki_client_site(client: MerakiClient) -> str:
     """
     Retrieves the device that the provided client is connected to in Meraki.
 
@@ -229,7 +229,7 @@ def format_output(meraki_client: MerakiClient, site_name: str) -> dict[list]:
     return slack_message_json
 
 
-def execute(arguments: list[str]) -> None:
+async def execute(arguments: list[str]) -> None:
     """
     Executes the status command. It will output the status of a client in
     Meraki, which will typically be a Clover device. The output includes the
@@ -247,23 +247,19 @@ def execute(arguments: list[str]) -> None:
     # Extract the MAC address from the arguments.
     client_mac_address = arguments[2].strip().lower()
 
-    # Get the Meraki client's information.
+    # Get the client's status and its site name.
     try:
-        meraki_client = get_meraki_client(client_mac_address)
+        # Get the Meraki client's information.
+        meraki_client = await get_meraki_client(client_mac_address)
+        
+        # Get the site's name that the client is connected to.
+        site_name = await get_meraki_client_site(meraki_client)
     except MerakiAPIError as error:
-        error_message = f'An API error occurred while getting client with MAC address {client_mac_address}'
+        error_message = f"An API error occurred while getting the client's status with MAC address {client_mac_address}"
         logger.error(error_message)
         logger.error(f'API error: {error}')
         slack.send_error(error_message)
         return
-
-    # Get the site's name that the client is connected to.
-    try:
-        site_name = get_meraki_client_site(meraki_client)
-    except MerakiAPIError as error:
-        logger.error(f'An error occurred trying to get the site name from Meraki: {error}')
-        logger.warning(f'Sending the client''s status without the site name')
-        site_name = ''
     
     # Format the payload for Slack.
     slack_payload = format_output(meraki_client, site_name)

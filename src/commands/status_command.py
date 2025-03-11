@@ -482,7 +482,7 @@ class CloverDevicesGroup:
 
 
 # ================================= Functions =================================
-def get_probe_health_sensor(site_id: str) -> PRTGSensor:
+async def get_probe_health_sensor(site_id: str) -> PRTGSensor:
     """
     Gets the status of the probe health sensor from PRTG and returns the 
     information as a PRTG sensor object.
@@ -529,7 +529,7 @@ def get_probe_health_sensor(site_id: str) -> PRTGSensor:
     )
 
 
-def get_site_ping_sensors(site_id: str) -> list[PRTGSensor]:
+async def get_site_ping_sensors(site_id: str) -> list[PRTGSensor]:
     """
     Gets the status of all the ping sensors at a site from PRTG and returns the 
     information as a list of PRTG sensor objects.
@@ -581,7 +581,7 @@ def get_site_ping_sensors(site_id: str) -> list[PRTGSensor]:
     return site_devices
 
 
-def get_site_pi_lte_dongle_sensor(site_id: str) -> PRTGSensor:
+async def get_site_pi_lte_dongle_sensor(site_id: str) -> PRTGSensor:
     """
     Gets the status of the LTE dongle plugged into the Raspberry Pi from PRTG
     and returns the information as a PRTG sensor object.
@@ -628,7 +628,7 @@ def get_site_pi_lte_dongle_sensor(site_id: str) -> PRTGSensor:
     )
 
 
-def get_site_primary_interface_sensor(site_id: str) -> PRTGSensor:
+async def get_site_primary_interface_sensor(site_id: str) -> PRTGSensor:
     """
     Gets the status of the primary interface sensor from PRTG and returns the
     information as a PRTG sensor object.
@@ -863,7 +863,7 @@ def is_valid_argument(arguments: list[str]) -> bool:
     return True
 
 
-def execute(arguments: list[str]) -> None:
+async def execute(arguments: list[str]) -> None:
     """
     Executes the status command. It will output the overall status of the site
     along with statuses of the probe device, each network device, the number of
@@ -886,17 +886,17 @@ def execute(arguments: list[str]) -> None:
     try:
         # Get the probe device's health sensor. This will also tell us if the
         # probe exists with the provided site ID.
-        site_probe_health_sensor = get_probe_health_sensor(site_id)
+        site_probe_health_sensor = await get_probe_health_sensor(site_id)
         
         # Get all ping sensors for the devices at the site. This includes
         # network devices and Clover devices.
-        site_ping_sensors = get_site_ping_sensors(site_id)
+        site_ping_sensors = await get_site_ping_sensors(site_id)
         
         # Get the sensor for the LTE dongle plugged into the site's Raspberry Pi.
-        site_pi_lte_dongle_sensor = get_site_pi_lte_dongle_sensor(site_id)
+        site_pi_lte_dongle_sensor = await get_site_pi_lte_dongle_sensor(site_id)
         
         # Get the sensor for the site's ISP connection.
-        site_primary_interface_sensor = get_site_primary_interface_sensor(site_id)
+        site_primary_interface_sensor = await get_site_primary_interface_sensor(site_id)
     except requests.RequestException as error:
         error_message = f'An unexpected request error occurred: {error}'
         logger.error(error_message)
