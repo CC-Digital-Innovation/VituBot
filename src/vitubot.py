@@ -8,7 +8,7 @@ import commands.wifi_command as wifi_command
 import slack
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from loguru import logger
 
 
@@ -39,25 +39,6 @@ class VituBotCommand(Enum):
 
 
 # ================================= Functions =================================
-def is_authorized(provided_api_key: str) -> bool:
-    """
-    Authorizes the provided API key.
-
-    Args:
-        provided_api_key (str): The API key to authorize.
-
-    Raises:
-        HTTPException: Raised when the provided API key does not match this
-            bot's Slack app key.
-    
-    Returns:
-        bool: True if the provided API key is valid, false otherwise.
-    """
-    
-    # Check if the provided API key is correct.
-    return secrets.compare_digest(provided_api_key, VITUBOT_SLACK_APP_TOKEN)
-        
-
 def is_valid_payload(payload: dict) -> bool:
     """
     Validates the provided payload by checking if it is non-null and contains
@@ -88,11 +69,85 @@ def is_valid_payload(payload: dict) -> bool:
         return False
     
     return True
-        
+
+
+def is_authorized(provided_api_key: str) -> bool:
+    """
+    Authorizes the provided API key.
+
+    Args:
+        provided_api_key (str): The API key to authorize.
+
+    Raises:
+        HTTPException: Raised when the provided API key does not match this
+            bot's Slack app key.
+    
+    Returns:
+        bool: True if the provided API key is valid, false otherwise.
+    """
+    
+    # Check if the provided API key is correct.
+    return secrets.compare_digest(provided_api_key, VITUBOT_SLACK_APP_TOKEN)
+
+
+def execute_vitubot_task(payload: dict) -> None:
+    """
+    Executes a VituBot command based off the provided payload. The payload will 
+    be authorized and validated before we examine the payload for a bot 
+    command. This payload comes from Slack and is triggered whenever this bot 
+    is tagged.
+
+    Args:
+        payload (dict): The Slack payload to extract a command from.
+
+    Raises:
+        HTTPException: An invalid payload was received.
+        HTTPException: An unsupported event type was received.
+
+    Returns:
+        dict: The HTTP response to send back to Slack. If a URL verification    
+            event is received, the challenge string will be returned.
+    """
+    
+    # Respond to the Slack channel to acknowledge that we are processing their request.
+    logger.info('Sending acknowledgement message to Slack...')
+    slack.send_ack()
+    
+    # Extract the command from the Slack payload.
+    vitubot_command = slack.EventCallback(**payload)
+    command_args = vitubot_command.event.text.split()
+    
+    logger.info(f'Received command: {command_args}')
+    
+    # Check if the bot was tagged with no command.
+    if len(command_args) == 1:
+        logger.info(f'Bot was tagged with no command. Executing "{VituBotCommand.HELP.value}" command')
+        help_command.execute()
+        logger.info(VITUBOT_END_STRING)
+        return VITUBOT_SUCCESSFUL_RESPONSE
+    
+    # Send the command to the proper function. Otherwise, send the help command.
+    command = command_args[1].lower()
+    match command:
+        case VituBotCommand.WIFI.value:
+            logger.info(f'Executing "{VituBotCommand.WIFI.value}" command')
+            wifi_command.execute(command_args)
+        case VituBotCommand.STATUS.value:
+            logger.info(f'Executing "{VituBotCommand.STATUS.value}" command')
+            status_command.execute(command_args)
+        case VituBotCommand.HELP.value:
+            logger.info(f'Executing "{VituBotCommand.HELP.value}" command')
+            help_command.execute()
+        case _:
+            logger.warning(f'An unknown command was provided: "{command}". Executing "{VituBotCommand.HELP.value}" command')
+            help_command.execute()
+    
+    logger.info(VITUBOT_END_STRING)
+
 
 # ================================= Endpoints =================================
-@app.post('/slack/event')
-def vitubot(payload: dict):
+@app.post('/slack/event', status_code=status.HTTP_200_OK)
+async def vitubot(payload: dict, background_tasks: BackgroundTasks):
     """
     Executes a VituBot command based off the provided payload. The payload will 
     be authorized and validated before we examine the payload for a bot 
@@ -147,38 +202,4 @@ def vitubot(payload: dict):
             detail='Unsupported event type received'
         )
     
-    # Respond to the Slack channel to acknowledge that we are processing their request.
-    logger.info('Sending acknowledgement message to Slack...')
-    slack.send_ack()
-    
-    # Extract the command from the Slack payload.
-    vitubot_command = slack.EventCallback(**payload)
-    command_args = vitubot_command.event.text.split()
-    
-    logger.info(f'Received command: {command_args}')
-    
-    # Check if the bot was tagged with no command.
-    if len(command_args) == 1:
-        logger.info(f'Bot was tagged with no command. Executing "{VituBotCommand.HELP.value}" command')
-        help_command.execute()
-        logger.info(VITUBOT_END_STRING)
-        return VITUBOT_SUCCESSFUL_RESPONSE
-    
-    # Send the command to the proper function. Otherwise, send the help command.
-    command = command_args[1].lower()
-    match command:
-        case VituBotCommand.WIFI.value:
-            logger.info(f'Executing "{VituBotCommand.WIFI.value}" command')
-            wifi_command.execute(command_args)
-        case VituBotCommand.STATUS.value:
-            logger.info(f'Executing "{VituBotCommand.STATUS.value}" command')
-            status_command.execute(command_args)
-        case VituBotCommand.HELP.value:
-            logger.info(f'Executing "{VituBotCommand.HELP.value}" command')
-            help_command.execute()
-        case _:
-            logger.warning(f'An unknown command was provided: "{command}". Executing "{VituBotCommand.HELP.value}" command')
-            help_command.execute()
-    
-    logger.info(VITUBOT_END_STRING)
-    return VITUBOT_SUCCESSFUL_RESPONSE
+    background_tasks.add_task(execute_vitubot_task, payload)
