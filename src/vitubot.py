@@ -90,7 +90,7 @@ def is_authorized(provided_api_key: str) -> bool:
     return secrets.compare_digest(provided_api_key, VITUBOT_SLACK_APP_TOKEN)
 
 
-def execute_vitubot_task(payload: dict) -> None:
+async def execute_vitubot_task(payload: dict) -> None:
     """
     Executes a VituBot command based off the provided payload. The payload will 
     be authorized and validated before we examine the payload for a bot 
@@ -131,10 +131,10 @@ def execute_vitubot_task(payload: dict) -> None:
     match command:
         case VituBotCommand.WIFI.value:
             logger.info(f'Executing "{VituBotCommand.WIFI.value}" command')
-            wifi_command.execute(command_args)
+            await wifi_command.execute(command_args)
         case VituBotCommand.STATUS.value:
             logger.info(f'Executing "{VituBotCommand.STATUS.value}" command')
-            status_command.execute(command_args)
+            await status_command.execute(command_args)
         case VituBotCommand.HELP.value:
             logger.info(f'Executing "{VituBotCommand.HELP.value}" command')
             help_command.execute()
