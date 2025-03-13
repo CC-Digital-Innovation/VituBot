@@ -102,7 +102,7 @@ def is_valid_argument(arguments: list[str]) -> bool:
     return True
 
 
-async def get_meraki_client(mac_address: str) -> MerakiClient:
+def get_meraki_client(mac_address: str) -> MerakiClient:
     """
     Retrieves the client with the provided MAC address from Meraki.
 
@@ -144,7 +144,7 @@ async def get_meraki_client(mac_address: str) -> MerakiClient:
     )
 
 
-async def get_meraki_client_site(client: MerakiClient) -> str:
+def get_meraki_client_site(client: MerakiClient) -> str:
     """
     Retrieves the device that the provided client is connected to in Meraki.
 
@@ -229,7 +229,7 @@ def format_output(meraki_client: MerakiClient, site_name: str) -> dict[list]:
     return slack_message_json
 
 
-async def execute(arguments: list[str]) -> None:
+def execute(arguments: list[str]) -> None:
     """
     Executes the status command. It will output the status of a client in
     Meraki, which will typically be a Clover device. The output includes the
@@ -250,10 +250,10 @@ async def execute(arguments: list[str]) -> None:
     # Get the client's status and its site name.
     try:
         # Get the Meraki client's information.
-        meraki_client = await get_meraki_client(client_mac_address)
+        meraki_client = get_meraki_client(client_mac_address)
         
         # Get the site's name that the client is connected to.
-        site_name = await get_meraki_client_site(meraki_client)
+        site_name = get_meraki_client_site(meraki_client)
     except MerakiAPIError as error:
         error_message = f"An API error occurred while getting the client's status with MAC address {client_mac_address}"
         logger.error(error_message)

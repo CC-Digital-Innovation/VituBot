@@ -5,6 +5,7 @@ import re
 
 import slack
 
+import asyncio
 from dotenv import load_dotenv
 from loguru import logger
 import requests
@@ -482,7 +483,7 @@ class CloverDevicesGroup:
 
 
 # ================================= Functions =================================
-async def get_probe_health_sensor(site_id: str) -> PRTGSensor:
+def get_probe_health_sensor(site_id: str) -> PRTGSensor:
     """
     Gets the status of the probe health sensor from PRTG and returns the 
     information as a PRTG sensor object.
@@ -529,7 +530,11 @@ async def get_probe_health_sensor(site_id: str) -> PRTGSensor:
     )
 
 
-async def get_site_ping_sensors(site_id: str) -> list[PRTGSensor]:
+async def get_probe_health_sensor_async(site_id: str) -> PRTGSensor:
+    return await asyncio.to_thread(get_probe_health_sensor, site_id)
+
+
+def get_site_ping_sensors(site_id: str) -> list[PRTGSensor]:
     """
     Gets the status of all the ping sensors at a site from PRTG and returns the 
     information as a list of PRTG sensor objects.
@@ -581,7 +586,11 @@ async def get_site_ping_sensors(site_id: str) -> list[PRTGSensor]:
     return site_devices
 
 
-async def get_site_pi_lte_dongle_sensor(site_id: str) -> PRTGSensor:
+async def get_site_ping_sensors_async(site_id: str) -> list[PRTGSensor]:
+    return await asyncio.to_thread(get_site_ping_sensors, site_id)
+
+
+def get_site_pi_lte_dongle_sensor(site_id: str) -> PRTGSensor:
     """
     Gets the status of the LTE dongle plugged into the Raspberry Pi from PRTG
     and returns the information as a PRTG sensor object.
@@ -628,7 +637,11 @@ async def get_site_pi_lte_dongle_sensor(site_id: str) -> PRTGSensor:
     )
 
 
-async def get_site_primary_interface_sensor(site_id: str) -> PRTGSensor:
+async def get_site_pi_lte_dongle_sensor_async(site_id: str) -> PRTGSensor:
+    return await asyncio.to_thread(get_site_pi_lte_dongle_sensor, site_id)
+
+
+def get_site_primary_interface_sensor(site_id: str) -> PRTGSensor:
     """
     Gets the status of the primary interface sensor from PRTG and returns the
     information as a PRTG sensor object.
@@ -673,6 +686,10 @@ async def get_site_primary_interface_sensor(site_id: str) -> PRTGSensor:
         site_primary_interface_status_int
     )
     
+
+async def get_site_primary_interface_sensor_async(site_id: str) -> PRTGSensor:
+    return await asyncio.to_thread(get_site_primary_interface_sensor, site_id)
+
 
 def normalize_overall_site_status(probe_device: ProbeDevice, network_devices: NetworkDevicesGroup, clover_devices: CloverDevicesGroup) -> None:
     """
@@ -884,19 +901,29 @@ async def execute(arguments: list[str]) -> None:
     # Gather all the sensors. Send an error message to Slack if something goes
     # wrong.
     try:
+        site_probe_health_sensor, \
+        site_ping_sensors, \
+        site_pi_lte_dongle_sensor, \
+        site_primary_interface_sensor = await asyncio.gather(
+            get_probe_health_sensor_async, site_id,
+            get_site_ping_sensors_async, site_id,
+            get_site_pi_lte_dongle_sensor_async, site_id,
+            get_site_primary_interface_sensor_async, site_id
+        )
+        
         # Get the probe device's health sensor. This will also tell us if the
         # probe exists with the provided site ID.
-        site_probe_health_sensor = await get_probe_health_sensor(site_id)
+        # site_probe_health_sensor = await get_probe_health_sensor(site_id)
         
         # Get all ping sensors for the devices at the site. This includes
         # network devices and Clover devices.
-        site_ping_sensors = await get_site_ping_sensors(site_id)
+        # site_ping_sensors = await get_site_ping_sensors(site_id)
         
         # Get the sensor for the LTE dongle plugged into the site's Raspberry Pi.
-        site_pi_lte_dongle_sensor = await get_site_pi_lte_dongle_sensor(site_id)
+        # site_pi_lte_dongle_sensor = await get_site_pi_lte_dongle_sensor(site_id)
         
         # Get the sensor for the site's ISP connection.
-        site_primary_interface_sensor = await get_site_primary_interface_sensor(site_id)
+        # site_primary_interface_sensor = await get_site_primary_interface_sensor(site_id)
     except requests.RequestException as error:
         error_message = f'An unexpected request error occurred: {error}'
         logger.error(error_message)

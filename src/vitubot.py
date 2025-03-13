@@ -131,7 +131,7 @@ async def execute_vitubot_task(payload: dict) -> None:
     match command:
         case VituBotCommand.WIFI.value:
             logger.info(f'Executing "{VituBotCommand.WIFI.value}" command')
-            await wifi_command.execute(command_args)
+            wifi_command.execute(command_args)
         case VituBotCommand.STATUS.value:
             logger.info(f'Executing "{VituBotCommand.STATUS.value}" command')
             await status_command.execute(command_args)
