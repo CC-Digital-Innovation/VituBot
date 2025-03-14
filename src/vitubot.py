@@ -147,7 +147,7 @@ async def execute_vitubot_task(payload: dict) -> None:
 
 # ================================= Endpoints =================================
 @app.post('/slack/event', status_code=status.HTTP_200_OK)
-async def vitubot(payload: dict, background_tasks: BackgroundTasks):
+def vitubot(payload: dict, background_tasks: BackgroundTasks):
     """
     Executes a VituBot command based off the provided payload. The payload will 
     be authorized and validated before we examine the payload for a bot 
