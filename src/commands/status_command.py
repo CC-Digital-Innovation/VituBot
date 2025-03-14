@@ -905,10 +905,10 @@ async def execute(arguments: list[str]) -> None:
         site_ping_sensors, \
         site_pi_lte_dongle_sensor, \
         site_primary_interface_sensor = await asyncio.gather(
-            get_probe_health_sensor_async, site_id,
-            get_site_ping_sensors_async, site_id,
-            get_site_pi_lte_dongle_sensor_async, site_id,
-            get_site_primary_interface_sensor_async, site_id
+            get_probe_health_sensor_async(site_id),
+            get_site_ping_sensors_async(site_id),
+            get_site_pi_lte_dongle_sensor_async(site_id),
+            get_site_primary_interface_sensor_async(site_id)
         )
         
         # Get the probe device's health sensor. This will also tell us if the
