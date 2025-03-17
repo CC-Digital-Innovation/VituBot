@@ -19,10 +19,6 @@ load_dotenv(override=True)
 app = FastAPI()
 
 VITUBOT_SLACK_APP_TOKEN = os.getenv('SLACK_APP_TOKEN')
-VITUBOT_SUCCESSFUL_RESPONSE = {
-    'status_code': 200,
-    'details': 'Command successful'
-}
 VITUBOT_END_STRING = \
     '===================================== END ======================================'
 
@@ -92,21 +88,15 @@ def is_authorized(provided_api_key: str) -> bool:
 
 async def execute_vitubot_task(payload: dict) -> None:
     """
-    Executes a VituBot command based off the provided payload. The payload will 
-    be authorized and validated before we examine the payload for a bot 
-    command. This payload comes from Slack and is triggered whenever this bot 
-    is tagged.
+    Executes a VituBot command based off the provided payload. Sends an
+    acknowledgement message to Slack so the user knows we have received their
+    request. It will then determine the command received from the payload and
+    send the arguments to the corresponding command. If an unknown command is
+    received or the bot was simply tagged with no command we will return the
+    output of the "help" command.
 
     Args:
         payload (dict): The Slack payload to extract a command from.
-
-    Raises:
-        HTTPException: An invalid payload was received.
-        HTTPException: An unsupported event type was received.
-
-    Returns:
-        dict: The HTTP response to send back to Slack. If a URL verification    
-            event is received, the challenge string will be returned.
     """
     
     # Respond to the Slack channel to acknowledge that we are processing their request.
@@ -124,7 +114,7 @@ async def execute_vitubot_task(payload: dict) -> None:
         logger.info(f'Bot was tagged with no command. Executing "{VituBotCommand.HELP.value}" command')
         help_command.execute()
         logger.info(VITUBOT_END_STRING)
-        return VITUBOT_SUCCESSFUL_RESPONSE
+        return
     
     # Send the command to the proper function. Otherwise, send the help command.
     command = command_args[1].lower()
@@ -147,23 +137,27 @@ async def execute_vitubot_task(payload: dict) -> None:
 
 # ================================= Endpoints =================================
 @app.post('/slack/event', status_code=status.HTTP_200_OK)
-def vitubot(payload: dict, background_tasks: BackgroundTasks):
+async def vitubot(payload: dict, background_tasks: BackgroundTasks):
     """
-    Executes a VituBot command based off the provided payload. The payload will 
-    be authorized and validated before we examine the payload for a bot 
-    command. This payload comes from Slack and is triggered whenever this bot 
-    is tagged.
+    The main endpoint for the VituBot. This function will authorize and
+    validate the payload before sending the payload to the execute function.
+    It will also send back a challenge token if prompted by the Slack API. This
+    function is designed to send back a response to the Slack API ASAP as per
+    the 3-second requirement. This endpoint is triggered whenever this bot is
+    tagged in Slack.
 
     Args:
         payload (dict): The Slack payload to extract a command from.
 
     Raises:
-        HTTPException: An invalid payload was received.
-        HTTPException: An unsupported event type was received.
+        HTTPException (400): An invalid payload was received or an unsupported
+            event type was received.
+        HTTPException (401): An invalid token was received.
 
     Returns:
         dict: The HTTP response to send back to Slack. If a URL verification    
-            event is received, the challenge string will be returned.
+            event is received, the challenge string from the payload will be
+            returned.
     """
     logger.info('============================== VituBot Triggered ===============================')
     

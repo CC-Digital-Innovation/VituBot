@@ -901,6 +901,7 @@ async def execute(arguments: list[str]) -> None:
     # Gather all the sensors. Send an error message to Slack if something goes
     # wrong.
     try:
+        # Send the requests to the PRTG API asynchronously.
         site_probe_health_sensor, \
         site_ping_sensors, \
         site_pi_lte_dongle_sensor, \
@@ -910,20 +911,6 @@ async def execute(arguments: list[str]) -> None:
             get_site_pi_lte_dongle_sensor_async(site_id),
             get_site_primary_interface_sensor_async(site_id)
         )
-        
-        # Get the probe device's health sensor. This will also tell us if the
-        # probe exists with the provided site ID.
-        # site_probe_health_sensor = await get_probe_health_sensor(site_id)
-        
-        # Get all ping sensors for the devices at the site. This includes
-        # network devices and Clover devices.
-        # site_ping_sensors = await get_site_ping_sensors(site_id)
-        
-        # Get the sensor for the LTE dongle plugged into the site's Raspberry Pi.
-        # site_pi_lte_dongle_sensor = await get_site_pi_lte_dongle_sensor(site_id)
-        
-        # Get the sensor for the site's ISP connection.
-        # site_primary_interface_sensor = await get_site_primary_interface_sensor(site_id)
     except requests.RequestException as error:
         error_message = f'An unexpected request error occurred: {error}'
         logger.error(error_message)
