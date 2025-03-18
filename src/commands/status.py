@@ -3,7 +3,7 @@ from enum import Enum
 import os
 import re
 
-import slack
+import services.slack as slack_service
 
 import asyncio
 from dotenv import load_dotenv
@@ -854,19 +854,19 @@ def is_valid_argument(arguments: list[str]) -> bool:
     if arguments is None:
         error_message = 'Invalid arguments provided'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     # Check if there are an incorrect number of arguments.
     if len(arguments) > VALID_ARGUMENT_COUNT:
         error_message = f'Too many arguments - expecting {VALID_ARGUMENT_COUNT} but got {len(arguments)}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     elif len(arguments) < VALID_ARGUMENT_COUNT:
         error_message = F'Too few arguments - expecting {VALID_ARGUMENT_COUNT}, but got {len(arguments)}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     # Verify the format of the site's ID.
@@ -874,7 +874,7 @@ def is_valid_argument(arguments: list[str]) -> bool:
     if not SITE_ID_REGEX.match(site_id):
         error_message = 'Invalid site ID - Must be a valid 3-digit ID'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     return True
@@ -914,31 +914,31 @@ async def execute(arguments: list[str]) -> None:
     except requests.RequestException as error:
         error_message = f'An unexpected request error occurred: {error}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return
     except requests.ConnectionError as error:
         error_message = f'A connection could not be established to PRTG: {error}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return
     except requests.HTTPError as error:
         error_message = f'An HTTP error occurred: {error}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return
     except requests.Timeout as error:
         error_message = f'The request to PRTG took too long: {error}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return
     except ValueError as error:
         logger.error(error)
-        slack.send_error(error)
+        slack_service.send_error(error)
         return
     except Exception as error:
         error_message = f'An unknown error occurred: {error}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return
     
     # Organize the sensors to determine overall status for each group.
@@ -953,4 +953,4 @@ async def execute(arguments: list[str]) -> None:
     site_status_payload = format_output(site_probe_device, site_network_devices_group, site_clover_devices_group)
 
     # Send the site's status to Slack.
-    slack.send_message(site_status_payload)
+    slack_service.send_message(site_status_payload)

@@ -5,10 +5,10 @@ import re
 
 from dotenv import load_dotenv
 from loguru import logger
-import meraki
+import meraki as MerakiSDK
 from meraki.exceptions import APIError as MerakiAPIError
 
-import slack
+import services.slack as slack_service
 
 
 # ====================== Environment / Global Variables =======================
@@ -18,7 +18,7 @@ load_dotenv(override=True)
 MERAKI_API_KEY = os.getenv('MERAKI_API_KEY')
 MERAKI_ORGANIZATION_ID = os.getenv('MERAKI_ORGANIZATION_ID')
 MERAKI_NETWORK_ID = os.getenv('MERAKI_NETWORK_ID')
-MERAKI_DASHBOARD = meraki.DashboardAPI(MERAKI_API_KEY, output_log=False, print_console=False, suppress_logging=True)
+MERAKI_DASHBOARD = MerakiSDK.DashboardAPI(MERAKI_API_KEY, output_log=False, print_console=False, suppress_logging=True)
 
 # Other global constants.
 MAC_ADDRESS_REGEX = re.compile('([0-9a-f]{2}:){5}[0-9a-f]{2}')
@@ -76,19 +76,19 @@ def is_valid_argument(arguments: list[str]) -> bool:
     if arguments is None:
         error_message = 'Invalid arguments provided - please try again'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     # Check if there are an incorrect number of arguments.
     if len(arguments) > VALID_ARGUMENT_COUNT:
         error_message = f'Too many arguments - expecting {VALID_ARGUMENT_COUNT} but got {len(arguments)}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     elif len(arguments) < VALID_ARGUMENT_COUNT:
         error_message = f'Too few arguments - expecting {VALID_ARGUMENT_COUNT}, but got {len(arguments)}'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     # Verify the format of the MAC address is valid.
@@ -96,7 +96,7 @@ def is_valid_argument(arguments: list[str]) -> bool:
     if not MAC_ADDRESS_REGEX.match(mac_address):
         error_message = 'Invalid MAC address - Must be a valid 12-digit MAC address with semi-colons (:)'
         logger.error(error_message)
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     return True
@@ -258,11 +258,11 @@ def execute(arguments: list[str]) -> None:
         error_message = f"An API error occurred while getting the client's status with MAC address {client_mac_address}"
         logger.error(error_message)
         logger.error(f'API error: {error}')
-        slack.send_error(error_message)
+        slack_service.send_error(error_message)
         return
     
     # Format the payload for Slack.
     slack_payload = format_output(meraki_client, site_name)
 
     # Return the Meraki client's status to Slack.
-    slack.send_message(slack_payload)
+    slack_service.send_message(slack_payload)

@@ -2,10 +2,11 @@ from enum import Enum
 import os
 import secrets
 
-import commands.help_command as help_command
-import commands.status_command as status_command
-import commands.wifi_command as wifi_command
-import slack
+import commands.clovers as clovers_command
+import commands.help as help_command
+import commands.status as status_command
+import commands.wifi as wifi_command
+import services.slack as slack_service
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
@@ -29,6 +30,7 @@ class VituBotCommand(Enum):
     Represents valid VituBot commands.
     """
     
+    CLOVERS = 'clovers'
     HELP = 'help'
     STATUS = 'status'
     WIFI = 'wifi'
@@ -101,10 +103,10 @@ async def execute_vitubot_task(payload: dict) -> None:
     
     # Respond to the Slack channel to acknowledge that we are processing their request.
     logger.info('Sending acknowledgement message to Slack...')
-    slack.send_ack()
+    slack_service.send_ack()
     
     # Extract the command from the Slack payload.
-    vitubot_command = slack.EventCallback(**payload)
+    vitubot_command = slack_service.EventCallback(**payload)
     command_args = vitubot_command.event.text.split()
     
     logger.info(f'Received command: {command_args}')
@@ -119,15 +121,18 @@ async def execute_vitubot_task(payload: dict) -> None:
     # Send the command to the proper function. Otherwise, send the help command.
     command = command_args[1].lower()
     match command:
-        case VituBotCommand.WIFI.value:
-            logger.info(f'Executing "{VituBotCommand.WIFI.value}" command')
-            wifi_command.execute(command_args)
-        case VituBotCommand.STATUS.value:
-            logger.info(f'Executing "{VituBotCommand.STATUS.value}" command')
-            await status_command.execute(command_args)
+        case VituBotCommand.CLOVERS.value:
+            logger.info(f'Executing "{VituBotCommand.CLOVERS.value}" command')
+            clovers_command.execute(command_args)
         case VituBotCommand.HELP.value:
             logger.info(f'Executing "{VituBotCommand.HELP.value}" command')
             help_command.execute()
+        case VituBotCommand.STATUS.value:
+            logger.info(f'Executing "{VituBotCommand.STATUS.value}" command')
+            await status_command.execute(command_args)
+        case VituBotCommand.WIFI.value:
+            logger.info(f'Executing "{VituBotCommand.WIFI.value}" command')
+            wifi_command.execute(command_args)
         case _:
             logger.warning(f'An unknown command was provided: "{command}". Executing "{VituBotCommand.HELP.value}" command')
             help_command.execute()
@@ -179,16 +184,16 @@ async def vitubot(payload: dict, background_tasks: BackgroundTasks):
         )
         
     # Check for a URL verification payload with a challenge string.
-    if payload['type'] == slack.EventType.URL_VERIFICATION.value:
+    if payload['type'] == slack_service.EventType.URL_VERIFICATION.value:
         logger.info('Slack challenge received. Sending back the challenge...')
-        slack_outer_payload = slack.URLVerificationPayload(**payload)
+        slack_outer_payload = slack_service.URLVerificationPayload(**payload)
         logger.info(VITUBOT_END_STRING)
         return {
             "challenge": slack_outer_payload.challenge
         }
     
     # Check for unknown / unsupported Slack event type.
-    if payload['type'] != slack.EventType.EVENT_CALLBACK.value:
+    if payload['type'] != slack_service.EventType.EVENT_CALLBACK.value:
         logger.error('An unsupported Slack event type was received')
         logger.info(VITUBOT_END_STRING)
         raise HTTPException(
