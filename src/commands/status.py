@@ -1,12 +1,12 @@
 from enum import Enum
 
-import services.constants as constants
-import services.prtg as prtg_service
-import services.slack as slack_service
-
 import asyncio
 from loguru import logger
 import requests
+
+import services.constants as constants
+import services.prtg as prtg_service
+import services.slack as slack_service
 
 
 # ====================== Environment / Global Variables =======================

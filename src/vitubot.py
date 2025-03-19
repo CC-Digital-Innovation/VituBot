@@ -2,15 +2,15 @@ from enum import Enum
 import os
 import secrets
 
+from dotenv import load_dotenv
+from fastapi import BackgroundTasks, FastAPI, HTTPException, status
+from loguru import logger
+
 import commands.clovers as clovers_command
 import commands.help as help_command
 import commands.status as status_command
 import commands.wifi as wifi_command
 import services.slack as slack_service
-
-from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, status
-from loguru import logger
 
 
 # ====================== Environment / Global Variables =======================
