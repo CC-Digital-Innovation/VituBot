@@ -6,7 +6,7 @@ import commands.clovers as clovers_command
 import commands.help as help_command
 import commands.status as status_command
 import commands.wifi as wifi_command
-import services.slack as constants
+import services.slack as slack_service
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
@@ -103,10 +103,10 @@ async def execute_vitubot_task(payload: dict) -> None:
     
     # Respond to the Slack channel to acknowledge that we are processing their request.
     logger.info('Sending acknowledgement message to Slack...')
-    constants.send_ack()
+    slack_service.send_ack()
     
     # Extract the command from the Slack payload.
-    vitubot_command = constants.EventCallback(**payload)
+    vitubot_command = slack_service.EventCallback(**payload)
     command_args = vitubot_command.event.text.split()
     
     logger.info(f'Received command: {command_args}')
@@ -184,16 +184,16 @@ async def vitubot(payload: dict, background_tasks: BackgroundTasks):
         )
         
     # Check for a URL verification payload with a challenge string.
-    if payload['type'] == constants.EventType.URL_VERIFICATION.value:
+    if payload['type'] == slack_service.EventType.URL_VERIFICATION.value:
         logger.info('Slack challenge received. Sending back the challenge...')
-        slack_outer_payload = constants.URLVerificationPayload(**payload)
+        slack_outer_payload = slack_service.URLVerificationPayload(**payload)
         logger.info(VITUBOT_END_STRING)
         return {
             "challenge": slack_outer_payload.challenge
         }
     
     # Check for unknown / unsupported Slack event type.
-    if payload['type'] != constants.EventType.EVENT_CALLBACK.value:
+    if payload['type'] != slack_service.EventType.EVENT_CALLBACK.value:
         logger.error('An unsupported Slack event type was received')
         logger.info(VITUBOT_END_STRING)
         raise HTTPException(

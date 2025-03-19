@@ -3,7 +3,7 @@ from meraki.exceptions import APIError as MerakiAPIError
 
 import services.constants as constants
 import services.meraki as meraki_service
-import services.slack as constants
+import services.slack as slack_service
 
 
 # ====================== Environment / Global Variables =======================
@@ -30,19 +30,19 @@ def is_valid_argument(arguments: list[str]) -> bool:
     if arguments is None:
         error_message = 'Invalid arguments provided - please try again'
         logger.error(error_message)
-        constants.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     # Check if there are an incorrect number of arguments.
     if len(arguments) > VALID_ARGUMENT_COUNT:
         error_message = f'Too many arguments - expecting {VALID_ARGUMENT_COUNT} but got {len(arguments)}'
         logger.error(error_message)
-        constants.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     elif len(arguments) < VALID_ARGUMENT_COUNT:
         error_message = f'Too few arguments - expecting {VALID_ARGUMENT_COUNT}, but got {len(arguments)}'
         logger.error(error_message)
-        constants.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     # Verify the format of the MAC address is valid.
@@ -50,7 +50,7 @@ def is_valid_argument(arguments: list[str]) -> bool:
     if not constants.MAC_ADDRESS_REGEX.match(mac_address):
         error_message = 'Invalid MAC address - Must be a valid 12-digit MAC address with semi-colons (:)'
         logger.error(error_message)
-        constants.send_error(error_message)
+        slack_service.send_error(error_message)
         return False
     
     return True
@@ -140,11 +140,11 @@ def execute(arguments: list[str]) -> None:
         error_message = f"An API error occurred while getting the client's status with MAC address {client_mac_address}"
         logger.error(error_message)
         logger.error(f'API error: {error}')
-        constants.send_error(error_message)
+        slack_service.send_error(error_message)
         return
     
     # Format the payload for Slack.
     slack_payload = format_output(meraki_client, site_name)
 
     # Return the Meraki client's status to Slack.
-    constants.send_message(slack_payload)
+    slack_service.send_message(slack_payload)
