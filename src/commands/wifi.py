@@ -1,59 +1,13 @@
-from dataclasses import dataclass
-from enum import Enum
-import os
-import re
-
-from dotenv import load_dotenv
 from loguru import logger
-import meraki as MerakiSDK
 from meraki.exceptions import APIError as MerakiAPIError
 
-import services.slack as slack_service
+import services.constants as constants
+import services.meraki as meraki_service
+import services.slack as constants
 
 
 # ====================== Environment / Global Variables =======================
-load_dotenv(override=True)
-
-# Initialize Meraki constant global variables.
-MERAKI_API_KEY = os.getenv('MERAKI_API_KEY')
-MERAKI_ORGANIZATION_ID = os.getenv('MERAKI_ORGANIZATION_ID')
-MERAKI_NETWORK_ID = os.getenv('MERAKI_NETWORK_ID')
-MERAKI_DASHBOARD = MerakiSDK.DashboardAPI(MERAKI_API_KEY, output_log=False, print_console=False, suppress_logging=True)
-
-# Other global constants.
-MAC_ADDRESS_REGEX = re.compile('([0-9a-f]{2}:){5}[0-9a-f]{2}')
 VALID_ARGUMENT_COUNT = 3
-
-
-# =================================== Enums ===================================
-class ClientStatus(Enum):
-    """
-    Represents the pretty string of the status of a client in Meraki.
-    """
-    
-    ONLINE = ':large_green_circle: Online'
-    OFFLINE = ':red_circle: Offline'
-    UNKNOWN = ':grey_question: Unknown'
-
-
-# ================================== Classes ==================================
-@dataclass
-class MerakiClient:
-    """
-    Represents a client connected to Meraki.
-    
-    Args:
-        mac_address (str): The MAC address of the client.
-        name (str): The name of the client as seen in Meraki.
-        status (ClientStatus): The status of the client.
-        site_mac_address (str): The MAC address of the device that the client
-            is connected to.
-    """
-    
-    mac_address: str
-    name: str
-    status: ClientStatus
-    site_mac_address: str
 
 
 # ================================= Functions =================================
@@ -76,105 +30,33 @@ def is_valid_argument(arguments: list[str]) -> bool:
     if arguments is None:
         error_message = 'Invalid arguments provided - please try again'
         logger.error(error_message)
-        slack_service.send_error(error_message)
+        constants.send_error(error_message)
         return False
     
     # Check if there are an incorrect number of arguments.
     if len(arguments) > VALID_ARGUMENT_COUNT:
         error_message = f'Too many arguments - expecting {VALID_ARGUMENT_COUNT} but got {len(arguments)}'
         logger.error(error_message)
-        slack_service.send_error(error_message)
+        constants.send_error(error_message)
         return False
     elif len(arguments) < VALID_ARGUMENT_COUNT:
         error_message = f'Too few arguments - expecting {VALID_ARGUMENT_COUNT}, but got {len(arguments)}'
         logger.error(error_message)
-        slack_service.send_error(error_message)
+        constants.send_error(error_message)
         return False
     
     # Verify the format of the MAC address is valid.
     mac_address = arguments[2].strip().lower()
-    if not MAC_ADDRESS_REGEX.match(mac_address):
+    if not constants.MAC_ADDRESS_REGEX.match(mac_address):
         error_message = 'Invalid MAC address - Must be a valid 12-digit MAC address with semi-colons (:)'
         logger.error(error_message)
-        slack_service.send_error(error_message)
+        constants.send_error(error_message)
         return False
     
     return True
 
 
-def get_meraki_client(mac_address: str) -> MerakiClient:
-    """
-    Retrieves the client with the provided MAC address from Meraki.
-
-    Args:
-        mac_address (str): The MAC address of the client.
-
-    Returns:
-        MerakiClient: The associated client with name, status, and the MAC 
-            address of the site probe the client is connected to. 
-    """
-    
-    # Try to find the client with the given MAC address in Meraki.
-    meraki_client_response = MERAKI_DASHBOARD.networks.getNetworkClient(
-        networkId=MERAKI_NETWORK_ID,
-        clientId=mac_address
-    )
-
-    # Extract the client's MAC address, name, status, and the MAC address of
-    # the device the client is connected to.
-    client_mac_address = meraki_client_response['mac']
-    client_name = client_mac_address if meraki_client_response['description'] is None else meraki_client_response['description']
-    client_raw_status = meraki_client_response['status']
-    site_mac_address = meraki_client_response['recentDeviceMac']
-    
-    # Convert the raw client status to a hard-typed status.
-    if client_raw_status == 'Online':
-        client_status = ClientStatus.ONLINE
-    elif client_raw_status == 'Offline':
-        client_status = ClientStatus.OFFLINE
-    else:
-        client_status = ClientStatus.UNKNOWN
-    
-    # Create the client object and return it.
-    return MerakiClient(
-        client_mac_address,
-        client_name,
-        client_status,
-        site_mac_address
-    )
-
-
-def get_meraki_client_site(client: MerakiClient) -> str:
-    """
-    Retrieves the device that the provided client is connected to in Meraki.
-
-    Args:
-        client (MerakiClient): The client associated with the device we are
-            trying to find in Meraki.
-
-    Returns:
-        str: The name of the device associated with the client (the name of
-            the site).
-    """
-    
-    site_name = ''
-    
-    # Get all network devices in Meraki.
-    meraki_devices_response = MERAKI_DASHBOARD.networks.getNetworkDevices(
-        networkId=MERAKI_NETWORK_ID
-    )
-
-    # Find the device that the client is connected to and extract its name (the site's name).
-    for meraki_device in meraki_devices_response:
-        # Check if this is the site the client device is connected to.
-        if meraki_device['mac'] == client.site_mac_address:
-            site_name = meraki_device['name']
-            break
-    
-    return site_name
-
-
-def format_output(meraki_client: MerakiClient, site_name: str) -> dict[list]:
+def format_output(meraki_client: meraki_service.Client, site_name: str) -> dict[list]:
     """
     Formats the output of the Slack message. Makes the output look
     sophisticated and pretty to convey the overall status effectively.
@@ -250,19 +132,19 @@ def execute(arguments: list[str]) -> None:
     # Get the client's status and its site name.
     try:
         # Get the Meraki client's information.
-        meraki_client = get_meraki_client(client_mac_address)
+        meraki_client = meraki_service.get_client(client_mac_address)
         
         # Get the site's name that the client is connected to.
-        site_name = get_meraki_client_site(meraki_client)
+        site_name = meraki_service.get_client_site(meraki_client)
     except MerakiAPIError as error:
         error_message = f"An API error occurred while getting the client's status with MAC address {client_mac_address}"
         logger.error(error_message)
         logger.error(f'API error: {error}')
-        slack_service.send_error(error_message)
+        constants.send_error(error_message)
         return
     
     # Format the payload for Slack.
     slack_payload = format_output(meraki_client, site_name)
 
     # Return the Meraki client's status to Slack.
-    slack_service.send_message(slack_payload)
+    constants.send_message(slack_payload)

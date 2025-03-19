@@ -1,4 +1,4 @@
-import services.slack as slack_service
+import services.slack as constants
 
 
 # ====================== Environment / Global Variables =======================
@@ -22,4 +22,4 @@ def execute() -> None:
     Sends the pre-formatted help message to Slack.
     """
     
-    slack_service.send_message(HELP_PAYLOAD)
+    constants.send_message(HELP_PAYLOAD)

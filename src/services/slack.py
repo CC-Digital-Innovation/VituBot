@@ -7,6 +7,8 @@ from loguru import logger
 from pydantic import BaseModel
 import requests
 
+import services.constants as constants
+
 
 # ====================== Environment / Global Variables =======================
 load_dotenv(override=True)
@@ -15,29 +17,16 @@ load_dotenv(override=True)
 SLACK_OAUTH_TOKEN = os.getenv('SLACK_OAUTH_TOKEN')
 SLACK_POST_CHANNEL_ID = os.getenv('SLACK_POST_CHANNEL_ID')
 SLACK_BASE_API_URL = 'https://slack.com/api'
-SLACK_ACK_PAYLOAD = {
-    "blocks": [
-		{
-			"type": "section",
-			"text": {
-				"type": "plain_text",
-				"text": ":repeat: Processing your request...",
-				"emoji": True
-			}
-		}
-	]
-}
 
 
-# =================================== Enums ===================================
 class EventType(Enum):
     """
     Represents the supported Slack event types.
     """
     
-    URL_VERIFICATION = 'url_verification'
     APP_MENTION = 'app_mention'
     EVENT_CALLBACK = 'event_callback'
+    URL_VERIFICATION = 'url_verification'
 
 
 # ================================== Classes ==================================
@@ -173,7 +162,7 @@ def send_error(reason: str) -> None:
                     "type": "section",
                     "text": {
                         "type": "plain_text",
-                        "text": f":exclamation: Error processing your request:\n\n{reason}",
+                        "text": f"{constants.SlackEmojiCodes.RED_EXCLAMATION_MARK.value} Error processing your request:\n\n{reason}",
                         "emoji": True
                     }
 		        }
@@ -189,5 +178,18 @@ def send_ack() -> None:
     """
     
     # Send an acknowledgement message to Slack.
-    send_message(SLACK_ACK_PAYLOAD)
+    send_message(
+        {
+            "blocks": [
+		        {
+			        "type": "section",
+			        "text": {
+				        "type": "plain_text",
+				        "text": f"{constants.SlackEmojiCodes.REPEAT_BUTTON.value} Processing your request...",
+				        "emoji": True
+			        }
+		        }
+	        ]
+        }
+    )
     
