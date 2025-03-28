@@ -78,7 +78,7 @@ def format_output(meraki_client: meraki_service.Client, site_name: str) -> dict[
             "text": {
                 "type": "plain_text",
                 "text": "Clover Device Status",
-                "emoji": True
+                "emoji": False
             }
         }
     )
@@ -90,7 +90,7 @@ def format_output(meraki_client: meraki_service.Client, site_name: str) -> dict[
             "fields": [
                 {
                     "type": "mrkdwn",
-                    "text": f"*Name:*\n{meraki_client.name}"
+                    "text": f"*Name:*\n`{meraki_client.name}`"
                 },
                 {
                     "type": "mrkdwn",
@@ -102,7 +102,7 @@ def format_output(meraki_client: meraki_service.Client, site_name: str) -> dict[
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*MAC Address:*\n{meraki_client.mac_address}"
+                    "text": f"*MAC Address:*\n`{meraki_client.mac_address}`"
                 }
             ]
         }
@@ -137,10 +137,15 @@ def execute(arguments: list[str]) -> None:
         # Get the site's name that the client is connected to.
         site_name = meraki_service.get_client_site(meraki_client)
     except MerakiAPIError as error:
-        error_message = f"An API error occurred while getting the client's status with MAC address {client_mac_address}"
-        logger.error(error_message)
-        logger.error(f'API error: {error}')
-        slack_service.send_error(error_message)
+        if error.status == 404:
+            error_message = f"Could not find Clover with MAC address `{client_mac_address}`"
+            logger.error(error_message.replace('`', ''))
+            slack_service.send_error(error_message)
+        else:
+            error_message = f"An API error occurred while getting the client's status with MAC address `{client_mac_address}`"
+            logger.error(error_message.replace('`', ''))
+            logger.error(f'API error: {error}')
+            slack_service.send_error(error_message)
         return
     
     # Format the payload for Slack.

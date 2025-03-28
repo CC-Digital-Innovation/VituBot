@@ -161,9 +161,8 @@ def send_error(reason: str) -> None:
                 {
                     "type": "section",
                     "text": {
-                        "type": "plain_text",
-                        "text": f"{constants.SlackEmojiCodes.RED_EXCLAMATION_MARK.value} Error processing your request:\n\n{reason}",
-                        "emoji": True
+                        "type": "mrkdwn",
+                        "text": f"{constants.SlackEmojiCodes.RED_EXCLAMATION_MARK.value} Error processing your request:\n\n{reason}"
                     }
 		        }
             ]
@@ -184,9 +183,8 @@ def send_ack() -> None:
 		        {
 			        "type": "section",
 			        "text": {
-				        "type": "plain_text",
-				        "text": f"{constants.SlackEmojiCodes.REPEAT_BUTTON.value} Processing your request...",
-				        "emoji": True
+				        "type": "mrkdwn",
+				        "text": f"{constants.SlackEmojiCodes.REPEAT_BUTTON.value} Processing your request..."
 			        }
 		        }
 	        ]

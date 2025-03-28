@@ -516,7 +516,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
                 "text": {
                     "type": "plain_text",
                     "text": "Error: No Probe found. Please check the site ID is correct.",
-                    "emoji": True
+                    "emoji": False
                 }
             }
         )
@@ -528,7 +528,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
                 "text": {
                     "type": "plain_text",
                     "text": f"{probe_device.probe_health_sensor.device_group} Site Status",
-                    "emoji": True
+                    "emoji": False
                 }
             }
         )
@@ -548,7 +548,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
                 "text": {
                     "type": "plain_text",
                     "text": "No network devices found for this probe",
-                    "emoji": True
+                    "emoji": False
                 }
             }
         )
@@ -559,7 +559,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
                 "text": {
                     "type": "plain_text",
                     "text": f"{network_devices_group.name} Status",
-                    "emoji": True
+                    "emoji": False
                 }
             }
         )
@@ -579,7 +579,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
                 "text": {
                     "type": "plain_text",
                     "text": "No Clover devices found for this probe",
-                    "emoji": True
+                    "emoji": False
                 }
             }
         )
@@ -590,7 +590,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
                 "text": {
                     "type": "plain_text",
                     "text": f"{clover_devices_group.name} Status",
-                    "emoji": True
+                    "emoji": False
                 }
             }
         )

@@ -66,7 +66,7 @@ def format_output(clover_ping_sensors: list[prtg_service.Sensor]) -> dict:
                     "text": {
 				        "type": "plain_text",
 				        "text": "All Non-Online Clovers",
-				        "emoji": True
+                        "emoji": False
 			        }
                 }
             ]
@@ -90,7 +90,7 @@ def format_output(clover_ping_sensors: list[prtg_service.Sensor]) -> dict:
 			    "type": "section",
 			    "text": {
 				    "type": "mrkdwn",
-				    "text": f"{clover_ping_sensor.status} | {clover_ping_sensor.device_name}"
+				    "text": f"{clover_ping_sensor.status} | `{clover_ping_sensor.device_name}`"
 			    }
 		    }
         )
