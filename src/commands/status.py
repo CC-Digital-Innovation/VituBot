@@ -362,25 +362,30 @@ class CloverGroupStatus:
                 
                 self.total_clovers += 1
         
-        # Determine the overall status of the Clover devices group.
-        percent_of_online_clovers = (self.up_clovers / self.total_clovers) * 100
-        
-        # Check if at least 90% of the Clovers are up.
-        if percent_of_online_clovers >= 90:
-            self.overall_status = OverallStatus.HEALTHY
-        # Check if at least 80% of the Clovers are up or most of the Clovers 
-        # are in some sort of warning / niche state.
-        elif percent_of_online_clovers >= 80 or self.warning_clovers > (self.up_clovers + self.down_clovers + self.paused_clovers):
-            self.overall_status = OverallStatus.DEGRADED
-        # Check if most of the Clovers are paused.
-        elif self.paused_clovers > (self.up_clovers + self.down_clovers + self.warning_clovers):
-            self.overall_status = OverallStatus.PAUSED
-        # Check if less than 80% of the Clovers are up.
-        elif percent_of_online_clovers < 80:
-            self.overall_status = OverallStatus.CRITICAL
-        # Something strange is going on...
-        else:
+        # Check if there are Clovers at this site (typical of express sites).
+        if self.total_clovers == 0:
+            self.name = ""
             self.overall_status = OverallStatus.UNKNOWN
+        else:
+            # Determine the overall status of the Clover devices group.
+            percent_of_online_clovers = (self.up_clovers / self.total_clovers) * 100
+            
+            # Check if at least 90% of the Clovers are up.
+            if percent_of_online_clovers >= 90:
+                self.overall_status = OverallStatus.HEALTHY
+            # Check if at least 80% of the Clovers are up or most of the Clovers 
+            # are in some sort of warning / niche state.
+            elif percent_of_online_clovers >= 80 or self.warning_clovers > (self.up_clovers + self.down_clovers + self.paused_clovers):
+                self.overall_status = OverallStatus.DEGRADED
+            # Check if most of the Clovers are paused.
+            elif self.paused_clovers > (self.up_clovers + self.down_clovers + self.warning_clovers):
+                self.overall_status = OverallStatus.PAUSED
+            # Check if less than 80% of the Clovers are up.
+            elif percent_of_online_clovers < 80:
+                self.overall_status = OverallStatus.CRITICAL
+            # Something strange is going on...
+            else:
+                self.overall_status = OverallStatus.UNKNOWN
     
     def generate_slack_message_section_json(self) -> dict:
         """
@@ -572,7 +577,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
     )
     
     # Check for the existence of the Clover devices group.
-    if not clover_devices_group:
+    if not clover_devices_group or clover_devices_group.total_clovers == 0:
         slack_message_json["blocks"].append(
             {
                 "type": "header",
