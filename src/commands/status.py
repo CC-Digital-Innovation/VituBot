@@ -1,8 +1,8 @@
+import asyncio
 from enum import Enum
 
-import asyncio
-from loguru import logger
 import requests
+from loguru import logger
 
 import services.constants as constants
 import services.prtg as prtg_service

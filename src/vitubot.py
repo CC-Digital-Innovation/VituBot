@@ -1,8 +1,8 @@
-from enum import Enum
 import os
 import secrets
+from enum import Enum
 
-from dotenv import load_dotenv
+import dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from loguru import logger
 
@@ -14,7 +14,7 @@ import services.slack as slack_service
 
 
 # ====================== Environment / Global Variables =======================
-load_dotenv(override=True)
+dotenv.load_dotenv(override=True)
 
 # Initialize the app's constant global variables.
 app = FastAPI()

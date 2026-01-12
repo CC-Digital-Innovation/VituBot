@@ -1,16 +1,16 @@
+import asyncio
+import os
 from dataclasses import dataclass
 from enum import Enum
 
-import asyncio
-from dotenv import load_dotenv
-import os
+import dotenv
 import requests
 
 import services.constants as constants
 
 
 # ====================== Environment / Global Variables =======================
-load_dotenv(override=True)
+dotenv.load_dotenv(override=True)
 
 # Initialize PRTG constant global variables.
 INSTANCE_NAME = os.getenv('PRTG_INSTANCE_NAME')

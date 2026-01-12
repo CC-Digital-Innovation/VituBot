@@ -1,15 +1,15 @@
+import os
 from dataclasses import dataclass
 from enum import Enum
-import os
 
-from dotenv import load_dotenv
+import dotenv
 import meraki as MerakiSDK
 
 import services.constants as constants
 
 
 # ====================== Environment / Global Variables =======================
-load_dotenv(override=True)
+dotenv.load_dotenv(override=True)
 
 # Initialize Meraki constant global variables.
 API_KEY = os.getenv('MERAKI_API_KEY')

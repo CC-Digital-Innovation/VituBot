@@ -1,17 +1,17 @@
-from enum import Enum
 import json
 import os
+from enum import Enum
 
-from dotenv import load_dotenv
+import dotenv
+import requests
 from loguru import logger
 from pydantic import BaseModel
-import requests
 
 import services.constants as constants
 
 
 # ====================== Environment / Global Variables =======================
-load_dotenv(override=True)
+dotenv.load_dotenv(override=True)
 
 # Initialize Slack constant global variables.
 SLACK_OAUTH_TOKEN = os.getenv('SLACK_OAUTH_TOKEN')

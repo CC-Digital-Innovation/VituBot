@@ -1,4 +1,3 @@
-asyncio
 fastapi
 meraki
 loguru
