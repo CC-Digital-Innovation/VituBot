@@ -16,7 +16,6 @@ dotenv.load_dotenv(override=True)
 INSTANCE_NAME = os.getenv('PRTG_INSTANCE_NAME')
 TABLE_URL = f'https://{INSTANCE_NAME}/api/table.xml'
 API_KEY = os.getenv('PRTG_API_KEY')
-PI_LTE_DONGLE_GROUP = 'PI - LTE'
 PROBE_HEALTH_NAME = 'Probe Health'
 PING_NAME = 'Ping'
 PRIMARY_INTERFACE_NAME = 'Primary Interface'
@@ -162,53 +161,6 @@ def get_primary_interface(site_id: str) -> Sensor:
         STATUS_MAP[site_primary_interface_status_int],
         site_primary_interface_status_int
     )
-
-
-def get_pi_lte_dongle(site_id: str) -> Sensor:
-    """
-    Gets the status of the LTE dongle plugged into the Raspberry Pi from PRTG
-    and returns the information as a PRTG sensor object.
-
-    Args:
-        site_id (str): The 3-digit site ID that the probe is associated with.
-
-    Raises:
-        ValueError: The site ID was not found in PRTG.
-
-    Returns:
-        Sensor: The pi LTE dongle sensor for the site.
-    """
-    
-    # Get the status of this site's pi LTE dongle from PRTG.
-    site_pi_lte_dongle_response = requests.get(
-        url=TABLE_URL,
-        params={
-            'content': 'sensors',
-            'columns': 'name,device,group,status',
-            'filter_group': PI_LTE_DONGLE_GROUP,
-            'filter_device': f'@sub({site_id})',
-            'filter_name': PING_NAME,
-            'output': 'json',
-            'count': '2',
-            'apitoken': API_KEY
-        }
-    )
-    pi_lte_dongle_json = site_pi_lte_dongle_response.json()
-    
-    # Check if we could not find the site's pi LTE dongle.
-    if len(pi_lte_dongle_json['sensors']) == 0:
-        raise ValueError(f'Pi LTE dongle sensor not found at site {site_id}')
-
-    # Make the sensor object and return it.
-    raw_pi_lte_dongle_sensor = pi_lte_dongle_json['sensors'][0]
-    pi_lte_dongle_status_int = raw_pi_lte_dongle_sensor['status_raw']
-    
-    return Sensor(
-        raw_pi_lte_dongle_sensor['device'], 
-        raw_pi_lte_dongle_sensor['group'], 
-        STATUS_MAP[pi_lte_dongle_status_int], 
-        pi_lte_dongle_status_int
-    )
     
 
 def get_all_pings(site_id: str) -> list[Sensor]:
@@ -329,13 +281,6 @@ async def get_primary_interface_async(site_id: str) -> Sensor:
     The asychronous version of "get_primary_interface()".
     """
     return await asyncio.to_thread(get_primary_interface, site_id)
-
-
-async def get_pi_lte_dongle_async(site_id: str) -> Sensor:
-    """
-    The asychronous version of "get_pi_lte_dongle()".
-    """
-    return await asyncio.to_thread(get_pi_lte_dongle, site_id)
 
 
 async def get_all_pings_async(site_id: str) -> list[Sensor]:
