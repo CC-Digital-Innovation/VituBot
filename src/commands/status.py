@@ -11,6 +11,7 @@ import services.slack as slack_service
 
 # ====================== Environment / Global Variables =======================
 VALID_ARGUMENT_COUNT = 3
+NETWORK_DEVICE_COUNT = 5
 
 
 # =================================== Enums ===================================
@@ -147,8 +148,6 @@ class NetworkGroupStatus:
     Members:
         name (str): The name of the network devices group.
         overall_status (OverallStatus): The overall status of the site.
-        pi_lte_dongle (prtg_service.Sensor): The ping sensor for the LTE dongle that is
-            connected to the site's Raspberry Pi.
         meraki_device (prtg_service.Sensor): The ping sensor for the Meraki wireless
             access point. Connects the Clovers to the internet.
         router (prtg_service.Sensor): The ping sensor for the Cradlepoint router.
@@ -157,7 +156,6 @@ class NetworkGroupStatus:
             networking equipment.
         vitupay_com (prtg_service.Sensor): The ping sensor for the connection to
             api.ca.vitupay.com.
-        pi_device (prtg_service.Sensor): The ping sensor for the Raspberry Pi.
         clover_com (prtg_service.Sensor): The ping sensor for the connection to
             d.clover.com.
         up_devices (int): The number of network devices that are online.
@@ -169,19 +167,17 @@ class NetworkGroupStatus:
     
     name: str
     overall_status: OverallStatus
-    pi_lte_dongle: prtg_service.Sensor = None
     meraki_device: prtg_service.Sensor = None
     router: prtg_service.Sensor = None
     pdu: prtg_service.Sensor = None
     vitupay_com: prtg_service.Sensor = None
-    pi_device: prtg_service.Sensor = None
     clover_com: prtg_service.Sensor = None
     up_devices: int = 0
     warning_devices: int = 0
     paused_devices: int = 0
     down_devices: int = 0
 
-    def __init__(self, all_probe_ping_sensors: list[prtg_service.Sensor], site_pi_lte_dongle_sensor: prtg_service.Sensor):
+    def __init__(self, all_probe_ping_sensors: list[prtg_service.Sensor]):
         """
         Initializes a network devices group object. Stores information
         regarding the status of all the network devices for this site.
@@ -189,33 +185,24 @@ class NetworkGroupStatus:
         Args:
             all_probe_ping_sensors (list[prtg_service.Sensor]): List of ping prtg_service.Sensors
                 associated with all devices with the probe.
-            site_pi_lte_dongle_sensor (prtg_service.Sensor): The ping prtg_service.Sensor of the 
-                site's LTE dongle plugged into the Raspberry Pi.
         """
-        
-        # Add the Pi LTE dongle to this group and check if it is online.
-        self.pi_lte_dongle = site_pi_lte_dongle_sensor
-        if self.pi_lte_dongle is not None and self.pi_lte_dongle.status_int == 3:
-            self.up_devices += 1
         
         # Go through all the ping sensors at this site.
         for ping_sensor in all_probe_ping_sensors:
             # Check if this is a network-related ping sensor for this site.
-            if prtg_service.GroupType.NETWORK_DEVICES.value in ping_sensor.device_group:
+            if prtg_service.GroupType.NETWORK_DEVICES.value in ping_sensor.device_group and 'SLAVE' not in ping_sensor.device_group:
                 self.name = ping_sensor.device_group
                 device_name_lower = ping_sensor.device_name.lower()
                 
                 # Add this network ping sensor to its corresponding device for this group.
                 if 'meraki' in device_name_lower:
                     self.meraki_device = ping_sensor
-                elif 'router' in device_name_lower:
+                elif 'router' in device_name_lower and 'slave' not in device_name_lower:
                     self.router = ping_sensor
                 elif 'pdu' in device_name_lower:
                     self.pdu = ping_sensor
                 elif 'vitupay' in device_name_lower:
                     self.vitupay_com = ping_sensor
-                elif 'pi' in device_name_lower:
-                    self.pi_device = ping_sensor
                 elif 'd.clover.com' in device_name_lower:
                     self.clover_com = ping_sensor
                 else:
@@ -239,16 +226,16 @@ class NetworkGroupStatus:
         
         # Determine the overall status of this group.
         # Check if all devices are up.
-        if self.up_devices == 7:
+        if self.up_devices == NETWORK_DEVICE_COUNT:
             self.overall_status = OverallStatus.HEALTHY
         # Check if 1 or more devices are in some sort of non-online state.
-        elif self.up_devices == 6 or self.warning_devices > (self.up_devices + self.paused_devices + self.down_devices):
+        elif self.up_devices == NETWORK_DEVICE_COUNT - 1 or self.warning_devices > (self.up_devices + self.paused_devices + self.down_devices):
             self.overall_status = OverallStatus.DEGRADED
         # Check if most devices are paused.
         elif self.paused_devices > (self.up_devices + self.warning_devices + self.down_devices):
             self.overall_status = OverallStatus.PAUSED
         # Check if 2 or more devices are in some sort of non-online state.
-        elif self.up_devices <= 5:
+        elif self.up_devices <= NETWORK_DEVICE_COUNT - 2:
             self.overall_status = OverallStatus.CRITICAL
         # Something strange is happening...
         else:
@@ -290,14 +277,6 @@ class NetworkGroupStatus:
                 {
                     "type": "mrkdwn",
                     "text": f"*d . clover . com:*\n{prtg_service.STATUS_MAP[0] if self.clover_com is None else self.clover_com.status}"
-                },
-                {
-                    "type": "mrkdwn",
-                    "text": f"*Pi:*\n{prtg_service.STATUS_MAP[0] if self.pi_device is None else self.pi_device.status}"
-                },
-                {
-                    "type": "mrkdwn",
-                    "text": f"*Pi LTE Dongle:*\n{prtg_service.STATUS_MAP[0] if self.pi_lte_dongle is None else self.pi_lte_dongle.status}"
                 }
             ]
         }
@@ -343,7 +322,7 @@ class CloverGroupStatus:
         # Go through all the ping sensors at this site.
         for ping_sensor in all_probe_ping_sensors:
             # Check if this is a Clover ping sensor for this site.
-            if prtg_service.GroupType.CLOVER_DEVICES.value in ping_sensor.device_group:
+            if prtg_service.GroupType.CLOVER_DEVICES.value in ping_sensor.device_group and 'SLAVE' not in ping_sensor.device_group:
                 self.name = ping_sensor.device_group
                 
                 # Check the status of this Clover device.
@@ -628,12 +607,10 @@ async def execute(arguments: list[str]) -> None:
         # Send the requests to the PRTG API asynchronously.
         site_ping_sensors, \
         site_probe_health_sensor, \
-        site_primary_interface_sensor, \
-        site_pi_lte_dongle_sensor = await asyncio.gather(
+        site_primary_interface_sensor = await asyncio.gather(
             prtg_service.get_all_pings_async(site_id),
             prtg_service.get_probe_health_async(site_id),
-            prtg_service.get_primary_interface_async(site_id),
-            prtg_service.get_pi_lte_dongle_async(site_id)
+            prtg_service.get_primary_interface_async(site_id)
         )
     except requests.RequestException as error:
         error_message = f'An unexpected request error occurred: {error}'
@@ -667,7 +644,7 @@ async def execute(arguments: list[str]) -> None:
     
     # Organize the sensors to determine overall status for each group.
     site_probe_device = ProbeDeviceStatus(site_probe_health_sensor, site_primary_interface_sensor)
-    site_network_devices_group = NetworkGroupStatus(site_ping_sensors, site_pi_lte_dongle_sensor)
+    site_network_devices_group = NetworkGroupStatus(site_ping_sensors)
     site_clover_devices_group = CloverGroupStatus(site_ping_sensors)
     
     # Adjust the overall status of the site based on the collective statuses.
