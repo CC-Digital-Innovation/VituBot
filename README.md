@@ -49,6 +49,11 @@ encounter any problems, please log an
 5. Submit a pull request ツ
 
 ## History
+-  version 3.1.0 - 2026/03/12
+    - Removed Raspberry Pi support
+    - Added support for new network topology
+
+
 -  version 3.0.0 - 2025/03/03
     - Added support for Slack's block-building output
     - Improved visibility of statuses
