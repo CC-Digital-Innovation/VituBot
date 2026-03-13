@@ -1,18 +1,18 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: vitubot
+  name: vitubot-v2
+  namespace: default
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
-    cert-manager.io/revision-history-limit: "3"
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
 spec:
   ingressClassName: traefik
   rules:
-  - host: k3s.quokka.ninja
+  - host: vitu.pscp-css.support
     http:
       paths:
-      - path: /vitubot
+      - path: /
         pathType: Prefix
         backend:
           service:
@@ -21,5 +21,5 @@ spec:
               number: 8000
   tls:
     - hosts:
-      - k3s.quokka.ninja
-      secretName: k3s.quokka.ninja
+      - vitu.pscp-css.support
+      secretName: vitu.pscp-css.support
