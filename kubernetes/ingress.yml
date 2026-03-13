@@ -1,13 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: vitubot-ingress
+  name: vitubot
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd,default-vitubot-stripprefix@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
-  - host: vitu.pscp-css.support
+  - host: k3s.quokka.ninja
     http:
       paths:
       - path: /vitubot
