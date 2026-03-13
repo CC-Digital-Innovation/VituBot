@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vitubot-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: vitu.pscp-css.support
+    http:
+      paths:
+      - path: /vitubot
+        pathType: Prefix
+        backend:
+          service:
+            name: vitubot
+            port:
+              number: 8000
