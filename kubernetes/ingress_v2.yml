@@ -6,15 +6,14 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     cert-manager.io/revision-history-limit: "3"
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd,default-vitubot-stripprefix@kubernetescrd
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
 spec:
   ingressClassName: traefik
   rules:
   - host: vitu.pscp-css.support
     http:
       paths:
-      - path: /vitubot
+      - path: /
         pathType: Prefix
         backend:
           service:
