@@ -11,7 +11,7 @@ import services.slack as slack_service
 
 # ====================== Environment / Global Variables =======================
 VALID_ARGUMENT_COUNT = 3
-NETWORK_DEVICE_COUNT = 5
+NETWORK_DEVICE_COUNT = 6
 
 
 # =================================== Enums ===================================
@@ -33,11 +33,11 @@ class ProbeDeviceStatus:
     Represents a probe device's status and its properties / associated sensors.
 
     Members:
-        probe_health_sensor (prtg_service.Sensor): The sensor that checks on the probe's
-            health.
-        primary_interface_sensor (prtg_service.Sensor): The sensor that checks whether
+        primary_probe_interface_sensor (prtg_service.Sensor): The sensor that checks whether
             the probe is getting an active internet connection through ethernet
             or not.
+        secondary_probe_health_sensor (prtg_service.Sensor): The sensor that
+            checks on the secondary probe's health.
         primary_interface_description (str): Describes the failover status of
             the probe.
         is_lte_only (bool): True if this is an LTE-only site. False otherwise.
@@ -47,38 +47,50 @@ class ProbeDeviceStatus:
             included status emoji.
     """
     
-    probe_health_sensor: prtg_service.Sensor
+    primary_probe_health_sensor: prtg_service.Sensor
+    secondary_probe_health_sensor: prtg_service.Sensor
     primary_interface_sensor: prtg_service.Sensor
     primary_interface_description: str
     is_lte_only: bool
     overall_status: OverallStatus
     
-    def __init__(self, probe_health_sensor: prtg_service.Sensor, primary_interface_sensor: prtg_service.Sensor):
+    def __init__(self, primary_probe_health_sensor: prtg_service.Sensor, secondary_probe_health_sensor: prtg_service.Sensor, primary_interface_sensor: prtg_service.Sensor):
         """
         Initializes a probe device with its properties and sensors.
 
         Args:
-            probe_health_sensor (prtg_service.Sensor): The sensor that checks on the
-                probe's health.
+            primary_probe_health_sensor (prtg_service.Sensor): The sensor that checks on the
+                primary probe's health.
+            secondary_probe_health_sensor (prtg_service.Sensor): The sensor that
+                checks on the secondary probe's health.
             primary_interface_sensor (prtg_service.Sensor): The sensor that checks
                 whether the probe is getting an active internet connection
                 through ethernet versus through an LTE connection.
         """
         
         # Set fields based off the parameters.
-        self.probe_health_sensor = probe_health_sensor
+        self.primary_probe_health_sensor = primary_probe_health_sensor
+        self.secondary_probe_health_sensor = secondary_probe_health_sensor
         self.primary_interface_sensor = primary_interface_sensor
-        self.is_lte_only = True if 'LTE Only' in self.probe_health_sensor.device_group else False
+        self.is_lte_only = True if 'LTE Only' in self.primary_probe_health_sensor.device_group else False
         
         # Determine the overall status.
-        # Check if the probe is up.
-        if self.probe_health_sensor.status_int == 3:
+        # Check if the primary probe is up.
+        if self.primary_probe_health_sensor.status_int == 3:
             self.overall_status = OverallStatus.HEALTHY
-        # Check if the probe health is in a warning / niche status.
-        elif self.probe_health_sensor.status_int in [2, 4, 6, 10, 11, 14]:
+            
+            # Check if the secondary probe health is in a warning / niche status.
+            if self.secondary_probe_health_sensor.status_int in [2, 4, 6, 10, 11, 14]:
+                self.overall_status = OverallStatus.DEGRADED
+        # Check if the primary probe health is in a warning / niche status.
+        elif self.primary_probe_health_sensor.status_int in [2, 4, 6, 10, 11, 14]:
             self.overall_status = OverallStatus.DEGRADED
+            
+            # Check if the secondary probe health is in a warning / niche status.
+            if self.secondary_probe_health_sensor.status_int in [2, 4, 6, 10, 11, 14]:
+                self.overall_status = OverallStatus.CRITICAL
         # Check if the probe is paused.
-        elif self.probe_health_sensor.status_int in [7, 8, 9, 12]:  
+        elif self.primary_probe_health_sensor.status_int in [7, 8, 9, 12]:  
             self.overall_status = OverallStatus.PAUSED
         # The probe is in some sort of down state.
         else:
@@ -86,7 +98,7 @@ class ProbeDeviceStatus:
         
         # Determine the site's failover status.
         # Check if the probe is up.
-        if self.probe_health_sensor.status_int == 3:
+        if self.primary_probe_health_sensor.status_int == 3:
             # Check if the probe is connected to the internet via an ISP
             # ethernet connection.
             if self.primary_interface_sensor.status_int == 3:
@@ -123,7 +135,11 @@ class ProbeDeviceStatus:
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*Probe Health:*\n{self.probe_health_sensor.status}"
+                    "text": f"*Failover Status:*\n{self.primary_interface_description}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Primary Probe Health:*\n{self.primary_probe_health_sensor.status}"
                 },
                 {
                     "type": "mrkdwn",
@@ -131,7 +147,7 @@ class ProbeDeviceStatus:
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*Failover Status:*\n{self.primary_interface_description}"
+                    "text": f"*Secondary Probe Health:*\n{self.secondary_probe_health_sensor.status}"
                 }
             ]
         }
@@ -150,8 +166,11 @@ class NetworkGroupStatus:
         overall_status (OverallStatus): The overall status of the site.
         meraki_device (prtg_service.Sensor): The ping sensor for the Meraki wireless
             access point. Connects the Clovers to the internet.
-        router (prtg_service.Sensor): The ping sensor for the Cradlepoint router.
-            Supplies internet to all the network devices (NOT the Clovers).
+        primary_router (prtg_service.Sensor): The ping sensor for the primary
+            Cradlepoint router. Supplies internet to all the network devices
+            (NOT the Clovers).
+        secondary_router (prtg_service.Sensor): The ping sensor for the secondary
+            Cradlepoint router. Used for failover in case the primary router goes down.
         pdu (prtg_service.Sensor): The ping sensor for the PDU that powers all the
             networking equipment.
         vitupay_com (prtg_service.Sensor): The ping sensor for the connection to
@@ -168,7 +187,8 @@ class NetworkGroupStatus:
     name: str
     overall_status: OverallStatus
     meraki_device: prtg_service.Sensor = None
-    router: prtg_service.Sensor = None
+    primary_router: prtg_service.Sensor = None
+    secondary_router: prtg_service.Sensor = None
     pdu: prtg_service.Sensor = None
     vitupay_com: prtg_service.Sensor = None
     clover_com: prtg_service.Sensor = None
@@ -190,7 +210,7 @@ class NetworkGroupStatus:
         # Go through all the ping sensors at this site.
         for ping_sensor in all_probe_ping_sensors:
             # Check if this is a network-related ping sensor for this site.
-            if prtg_service.GroupType.NETWORK_DEVICES.value in ping_sensor.device_group and 'SLAVE' not in ping_sensor.device_group:
+            if prtg_service.GroupType.NETWORK_DEVICES.value in ping_sensor.device_group:
                 self.name = ping_sensor.device_group
                 device_name_lower = ping_sensor.device_name.lower()
                 
@@ -198,7 +218,9 @@ class NetworkGroupStatus:
                 if 'meraki' in device_name_lower:
                     self.meraki_device = ping_sensor
                 elif 'router' in device_name_lower and 'slave' not in device_name_lower:
-                    self.router = ping_sensor
+                    self.primary_router = ping_sensor
+                elif 'router' in device_name_lower and 'slave' in device_name_lower:
+                    self.secondary_router = ping_sensor
                 elif 'pdu' in device_name_lower:
                     self.pdu = ping_sensor
                 elif 'vitupay' in device_name_lower:
@@ -264,7 +286,11 @@ class NetworkGroupStatus:
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*Router:*\n{prtg_service.STATUS_MAP[0] if self.router is None else self.router.status}"
+                    "text": f"*Primary Router:*\n{prtg_service.STATUS_MAP[0] if self.primary_router is None else self.primary_router.status}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Secondary Router:*\n{prtg_service.STATUS_MAP[0] if self.secondary_router is None else self.secondary_router.status}"
                 },
                 {
                     "type": "mrkdwn",
@@ -511,7 +537,7 @@ def format_output(probe_device: ProbeDeviceStatus, network_devices_group: Networ
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"{probe_device.probe_health_sensor.device_group} Site Status",
+                    "text": f"{probe_device.primary_probe_health_sensor.device_group.split(' ')[0]} Site Status",
                     "emoji": False
                 }
             }
@@ -607,9 +633,11 @@ async def execute(arguments: list[str]) -> None:
         # Send the requests to the PRTG API asynchronously.
         site_ping_sensors, \
         site_probe_health_sensor, \
+        site_secondary_probe_health_sensor, \
         site_primary_interface_sensor = await asyncio.gather(
             prtg_service.get_all_pings_async(site_id),
             prtg_service.get_probe_health_async(site_id),
+            prtg_service.get_secondary_probe_health_async(site_id),
             prtg_service.get_primary_interface_async(site_id)
         )
     except requests.RequestException as error:
@@ -643,7 +671,7 @@ async def execute(arguments: list[str]) -> None:
         return
     
     # Organize the sensors to determine overall status for each group.
-    site_probe_device = ProbeDeviceStatus(site_probe_health_sensor, site_primary_interface_sensor)
+    site_probe_device = ProbeDeviceStatus(site_probe_health_sensor, site_secondary_probe_health_sensor, site_primary_interface_sensor)
     site_network_devices_group = NetworkGroupStatus(site_ping_sensors)
     site_clover_devices_group = CloverGroupStatus(site_ping_sensors)
     
