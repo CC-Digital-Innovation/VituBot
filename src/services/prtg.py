@@ -91,7 +91,7 @@ def get_probe_health(site_id: str) -> Sensor:
         params={
             'content': 'sensors',
             'columns': 'name,device,group,probe,status',
-            'filter_probe': f'@sub({site_id})',
+            'filter_probe': f'@sub({site_id} MASTER)',
             'filter_name': PROBE_HEALTH_NAME,
             'sortby': 'device',
             'output': 'json',
@@ -104,6 +104,54 @@ def get_probe_health(site_id: str) -> Sensor:
     # Check if we could not find the site's probe health sensor.
     if len(probe_health_sensor_json['sensors']) == 0:
         raise ValueError(f'Probe does not exist with site ID: {site_id}')
+
+    # Make the sensor object and return it.
+    raw_probe_health_sensor = probe_health_sensor_json['sensors'][0]
+    site_probe_health_status_int = raw_probe_health_sensor['status_raw']
+    
+    return Sensor(
+        raw_probe_health_sensor['device'], 
+        raw_probe_health_sensor['group'], 
+        STATUS_MAP[site_probe_health_status_int], 
+        site_probe_health_status_int
+    )
+
+
+def get_secondary_probe_health(site_id: str) -> Sensor:
+    """
+    Gets the status of the probe health sensor for the secondary probe with
+    the associated site ID from PRTG and returns the information as a PRTG
+    sensor object.
+
+    Args:
+        site_id (str): The 3-digit site ID that the probe is associated with.
+
+    Raises:
+        ValueError: The site ID was not found in PRTG.
+
+    Returns:
+        Sensor: The probe health sensor for the site.
+    """
+    
+    # Get the status of this site's probe health sensor.
+    probe_health_sensor_response = requests.get(
+        url=TABLE_URL,
+        params={
+            'content': 'sensors',
+            'columns': 'name,device,group,probe,status',
+            'filter_probe': f'@sub({site_id} SLAVE)',
+            'filter_name': PROBE_HEALTH_NAME,
+            'sortby': 'device',
+            'output': 'json',
+            'count': '2',
+            'apitoken': API_KEY
+        }
+    )
+    probe_health_sensor_json = probe_health_sensor_response.json()
+    
+    # Check if we could not find the site's probe health sensor.
+    if len(probe_health_sensor_json['sensors']) == 0:
+        raise ValueError(f'Secondary probe does not exist with site ID: {site_id}')
 
     # Make the sensor object and return it.
     raw_probe_health_sensor = probe_health_sensor_json['sensors'][0]
@@ -138,7 +186,7 @@ def get_primary_interface(site_id: str) -> Sensor:
         params={
             'content': 'sensors',
             'columns': 'name,status,probe,group,device',
-            'filter_probe': f'@sub({site_id})',
+            'filter_probe': f'@sub({site_id}),@sub(MASTER)',
             'filter_name': PRIMARY_INTERFACE_NAME,
             'output': 'json',
             'count': '2',
@@ -274,6 +322,13 @@ async def get_probe_health_async(site_id: str) -> Sensor:
     The asynchronous version of "get_probe_health()".
     """
     return await asyncio.to_thread(get_probe_health, site_id)
+
+
+async def get_secondary_probe_health_async(site_id: str) -> Sensor:
+    """
+    The asynchronous version of "get_secondary_probe_health()".
+    """
+    return await asyncio.to_thread(get_secondary_probe_health, site_id)
 
 
 async def get_primary_interface_async(site_id: str) -> Sensor:
