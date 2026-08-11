@@ -164,8 +164,10 @@ class NetworkGroupStatus:
     Members:
         name (str): The name of the network devices group.
         overall_status (OverallStatus): The overall status of the site.
-        meraki_device (prtg_service.Sensor): The ping sensor for the Meraki wireless
+        meraki_device_1 (prtg_service.Sensor): The ping sensor for a Meraki wireless
             access point. Connects the Clovers to the internet.
+        meraki_device_2 (prtg_service.Sensor): The ping sensor for another Meraki wireless
+            access point (if present). Connects the Clovers to the internet.
         primary_router (prtg_service.Sensor): The ping sensor for the primary
             Cradlepoint router. Supplies internet to all the network devices
             (NOT the Clovers).
@@ -186,7 +188,8 @@ class NetworkGroupStatus:
     
     name: str
     overall_status: OverallStatus
-    meraki_device: prtg_service.Sensor = None
+    meraki_device_1: prtg_service.Sensor = None
+    meraki_device_2: prtg_service.Sensor = None
     primary_router: prtg_service.Sensor = None
     secondary_router: prtg_service.Sensor = None
     pdu: prtg_service.Sensor = None
@@ -208,6 +211,7 @@ class NetworkGroupStatus:
         """
         
         # Go through all the ping sensors at this site.
+        meraki_device_count = 0
         for ping_sensor in all_probe_ping_sensors:
             # Check if this is a network-related ping sensor for this site.
             if prtg_service.GroupType.NETWORK_DEVICES.value in ping_sensor.device_group:
@@ -215,8 +219,12 @@ class NetworkGroupStatus:
                 device_name_lower = ping_sensor.device_name.lower()
                 
                 # Add this network ping sensor to its corresponding device for this group.
-                if 'meraki' in device_name_lower:
-                    self.meraki_device = ping_sensor
+                if 'meraki' in device_name_lower and meraki_device_count == 0:
+                    self.meraki_device_1 = ping_sensor
+                    meraki_device_count += 1
+                elif 'meraki' in device_name_lower and meraki_device_count == 1:
+                    self.meraki_device_2 = ping_sensor
+                    meraki_device_count += 1
                 elif 'router' in device_name_lower and 'slave' not in device_name_lower:
                     self.primary_router = ping_sensor
                 elif 'router' in device_name_lower and 'slave' in device_name_lower:
@@ -247,21 +255,42 @@ class NetworkGroupStatus:
                     self.down_devices += 1
         
         # Determine the overall status of this group.
-        # Check if all devices are up.
-        if self.up_devices == NETWORK_DEVICE_COUNT:
-            self.overall_status = OverallStatus.HEALTHY
-        # Check if 1 or more devices are in some sort of non-online state.
-        elif self.up_devices == NETWORK_DEVICE_COUNT - 1 or self.warning_devices > (self.up_devices + self.paused_devices + self.down_devices):
-            self.overall_status = OverallStatus.DEGRADED
-        # Check if most devices are paused.
-        elif self.paused_devices > (self.up_devices + self.warning_devices + self.down_devices):
-            self.overall_status = OverallStatus.PAUSED
-        # Check if 2 or more devices are in some sort of non-online state.
-        elif self.up_devices <= NETWORK_DEVICE_COUNT - 2:
-            self.overall_status = OverallStatus.CRITICAL
-        # Something strange is happening...
+        # Check if there are 2 Meraki devices at this site.
+        if meraki_device_count == 2:
+            double_meraki_network_device_count = NETWORK_DEVICE_COUNT + 1
+            
+            # Check if all devices are up.
+            if self.up_devices == double_meraki_network_device_count:
+                self.overall_status = OverallStatus.HEALTHY
+            # Check if 1 or more devices are in some sort of non-online state.
+            elif self.up_devices == double_meraki_network_device_count - 1 or self.warning_devices > (self.up_devices + self.paused_devices + self.down_devices):
+                self.overall_status = OverallStatus.DEGRADED
+            # Check if most devices are paused.
+            elif self.paused_devices > (self.up_devices + self.warning_devices + self.down_devices):
+                self.overall_status = OverallStatus.PAUSED
+            # Check if 2 or more devices are in some sort of non-online state.
+            elif self.up_devices <= double_meraki_network_device_count - 2:
+                self.overall_status = OverallStatus.CRITICAL
+            # Something strange is happening...
+            else:
+                self.overall_status = OverallStatus.UNKNOWN
         else:
-            self.overall_status = OverallStatus.UNKNOWN
+            # Check if all devices are up.
+            if self.up_devices == NETWORK_DEVICE_COUNT:
+                self.overall_status = OverallStatus.HEALTHY
+            # Check if 1 or more devices are in some sort of non-online state.
+            elif self.up_devices == NETWORK_DEVICE_COUNT - 1 or self.warning_devices > (self.up_devices + self.paused_devices + self.down_devices):
+                self.overall_status = OverallStatus.DEGRADED
+            # Check if most devices are paused.
+            elif self.paused_devices > (self.up_devices + self.warning_devices + self.down_devices):
+                self.overall_status = OverallStatus.PAUSED
+            # Check if 2 or more devices are in some sort of non-online state.
+            elif self.up_devices <= NETWORK_DEVICE_COUNT - 2:
+                self.overall_status = OverallStatus.CRITICAL
+            # Something strange is happening...
+            else:
+                self.overall_status = OverallStatus.UNKNOWN
+            
          
     def generate_slack_message_section_json(self) -> dict:
         """
@@ -282,7 +311,7 @@ class NetworkGroupStatus:
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*Meraki:*\n{prtg_service.STATUS_MAP[0] if self.meraki_device is None else self.meraki_device.status}"
+                    "text": f"*Meraki:*\n{self._meraki_devices_status()}"
                 },
                 {
                     "type": "mrkdwn",
@@ -308,6 +337,24 @@ class NetworkGroupStatus:
         }
         
         return slack_message_json
+
+    def _meraki_devices_status(self) -> str:
+        """
+        Returns the status of the Meraki devices in this group. If there are
+        2 Meraki devices, it will return both statuses. If there is only 1
+        Meraki device, it will return that status. If there are no Meraki
+        devices, it will return the "None" PRTG status.
+
+        Returns:
+            str: The status of the Meraki devices in this group.
+        """
+        
+        if self.meraki_device_1 and self.meraki_device_2:
+            return f"{self.meraki_device_1.status} | {self.meraki_device_2.status}"
+        elif self.meraki_device_1:
+            return self.meraki_device_1.status
+        else:
+            return prtg_service.STATUS_MAP[0]
     
 
 class CloverGroupStatus:
