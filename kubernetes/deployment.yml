@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vitubot
-  namespace: default
+  namespace: vitu
 spec:
   replicas: 1
   selector:
@@ -38,12 +38,25 @@ spec:
       labels:
         app: vitubot
     spec:
+      securityContext:
+            runAsNonRoot: true
+            runAsUser: 10014
+            runAsGroup: 10015
       containers:
         - image: harbor.pscp-css.support/library/vitubot:0.0.20
+          imagePullPolicy: IfNotPresent
           name: vitubot
-          args: ['/bin/bash', '-c', 'source /vault/secrets/v-meraki && source /vault/secrets/v-prtg && source /vault/secrets/vitubot && uvicorn vitubot:app --host 0.0.0.0 --port 8000 --root-path /vitubot']
+          command: ['sh', '-c', 'source /vault/secrets/v-meraki && source /vault/secrets/v-prtg && source /vault/secrets/vitubot && python main.py']
           ports:
             - containerPort: 8000
+          securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+                seccompProfile:
+                  type: RuntimeDefault
           resources:
             limits:
               cpu: "4"
@@ -51,4 +64,5 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
+      restartPolicy: Never
       serviceAccountName: vitubot
