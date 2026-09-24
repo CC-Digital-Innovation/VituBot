@@ -1,7 +1,7 @@
-fastapi
-meraki
-loguru
-pydantic
-python-dotenv
-requests
-uvicorn
+fastapi==0.141.1
+meraki==4.5.0
+loguru==0.7.3
+pydantic==2.13.5
+python-dotenv==1.2.3
+requests==2.34.2
+uvicorn==0.53.0
