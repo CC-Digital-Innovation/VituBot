@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: vitubot-v2
-  namespace: default
+  namespace: vitu
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     cert-manager.io/revision-history-limit: "3"
